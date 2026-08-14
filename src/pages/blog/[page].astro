@@ -15,7 +15,11 @@ const { page } = Astro.props as any;
 const tags = await getAllTags();
 ---
 
-<BaseLayout title="ブログ" description={`${SITE.title}のブログ記事一覧`} canonicalPath={`/blog/${page.currentPage}`}>
+<BaseLayout
+  title="ブログ"
+  description={`${SITE.title}のブログ記事一覧`}
+  canonicalPath={page.currentPage === 1 ? '/blog' : `/blog/${page.currentPage}`}
+>
   <div class="mx-auto max-w-5xl px-6 py-16">
     <div class="mb-10">
       <h1 class="text-3xl font-bold text-[var(--color-ink)]">ブログ</h1>
