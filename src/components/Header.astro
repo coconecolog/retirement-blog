@@ -2,17 +2,23 @@
 import { SITE, NAV } from '../lib/site.config';
 ---
 
-<header class="sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-paper)]/90 backdrop-blur">
-  <div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
-    <a href="/" class="text-lg font-bold tracking-tight text-[var(--color-ink)]">
+<header class="sticky top-4 z-50 mt-4 px-4 sm:px-6">
+  <div class="mx-auto flex max-w-4xl items-center justify-between gap-4 rounded-2xl border border-black/5 bg-white/70 px-5 py-3 shadow-[0_8px_30px_-12px_rgba(0,0,0,0.15)] backdrop-blur-xl sm:px-6">
+    <a href="/" class="shrink-0 text-base font-bold tracking-tight text-[var(--color-ink)]">
       {SITE.title}
     </a>
-    <nav class="flex items-center gap-6 text-sm font-medium text-[var(--color-ink-muted)]">
+    <nav class="flex items-center gap-4 text-sm font-medium text-[var(--color-ink-muted)] sm:gap-7">
       {NAV.map((item) => (
         <a href={item.href} class="transition-colors hover:text-[var(--color-brand)]">
           {item.label}
         </a>
       ))}
     </nav>
+    
+      href="/blog"
+      class="hidden shrink-0 rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 sm:inline-block"
+    >
+      記事を読む
+    </a>
   </div>
 </header>
