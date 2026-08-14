@@ -17,6 +17,8 @@ export const PROP = {
   updatedAt: '更新日',
   thumbnail: 'サムネイル画像',
   published: '公開',
+  // 半角英数字とハイフンで指定するURL用のスラッグ。空欄ならページIDを自動で使う。
+  slug: 'スラッグ',
 } as const;
 
 export type Post = {
@@ -57,10 +59,22 @@ function getThumbnail(prop: any): string | null {
   return null;
 }
 
-// Notion page id（ハイフン付きUUID）からハイフンを除いたものをスラッグとして使用。
-// 記事タイトルを変更してもURLが変わらないので、SEO上安全です。
+// Notion page id（ハイフン付きUUID）からハイフンを除いたものをスラッグとして使用（フォールバック用）。
 function toSlug(pageId: string): string {
   return pageId.replace(/-/g, '');
+}
+
+// 「スラッグ」プロパティ（rich_text）の値を取得し、URLとして安全な形に整形する。
+// 半角英数字・ハイフン以外は取り除き、空欄なら null を返す（呼び出し側でページIDにフォールバック）。
+function getCustomSlug(prop: any): string | null {
+  const raw: string = prop?.rich_text?.map((t: any) => t.plain_text).join('') ?? '';
+  const cleaned = raw
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  return cleaned || null;
 }
 
 function makeExcerpt(markdown: string, length = 110): string {
@@ -85,6 +99,7 @@ export async function getAllPosts(): Promise<Post[]> {
 
   const n2m = new NotionToMarkdown({ notionClient: notion });
   const posts: Post[] = [];
+  const usedSlugs = new Set<string>();
   let cursor: string | undefined = undefined;
 
   // Notion API 2025-09 以降、データベースは1つ以上の「データソース」を持つ構造になったため、
@@ -116,6 +131,15 @@ export async function getAllPosts(): Promise<Post[]> {
       const updatedAt: string = props[PROP.updatedAt]?.date?.start ?? page.last_edited_time;
       const thumbnail = getThumbnail(props[PROP.thumbnail]);
 
+      const fallbackSlug = toSlug(page.id);
+      const customSlug = getCustomSlug(props[PROP.slug]);
+      let slug = customSlug || fallbackSlug;
+      if (usedSlugs.has(slug)) {
+        console.warn(`[notion] スラッグ「${slug}」が重複しています。「${title}」はページIDのURLにフォールバックします。`);
+        slug = fallbackSlug;
+      }
+      usedSlugs.add(slug);
+
       let mdString = '';
       try {
         const mdBlocks = await n2m.pageToMarkdown(page.id);
@@ -128,7 +152,7 @@ export async function getAllPosts(): Promise<Post[]> {
 
       posts.push({
         id: page.id,
-        slug: toSlug(page.id),
+        slug,
         title,
         tags,
         publishedAt,
