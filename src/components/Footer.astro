@@ -1,0 +1,20 @@
+---
+import { SITE } from '../lib/site.config';
+const year = new Date().getFullYear();
+---
+
+<footer class="border-t border-[var(--color-border)] bg-[var(--color-surface)]">
+  <div class="mx-auto max-w-5xl px-6 py-12 text-sm text-[var(--color-ink-muted)]">
+    <div class="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+      <p class="font-semibold text-[var(--color-ink)]">{SITE.title}</p>
+      <nav class="flex flex-wrap gap-5">
+        <a href="/" class="hover:text-[var(--color-brand)]">トップ</a>
+        <a href="/blog/1" class="hover:text-[var(--color-brand)]">ブログ</a>
+        <a href="/about" class="hover:text-[var(--color-brand)]">ABOUT</a>
+        <a href="/privacy" class="hover:text-[var(--color-brand)]">個人情報の取り扱いについて</a>
+        <a href="/rss.xml" class="hover:text-[var(--color-brand)]">RSS</a>
+      </nav>
+    </div>
+    <p class="mt-8 text-xs text-[var(--color-ink-muted)]">© {year} {SITE.title}. All rights reserved.</p>
+  </div>
+</footer>

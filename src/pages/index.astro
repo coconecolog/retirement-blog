@@ -1,0 +1,64 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PostCard from '../components/PostCard.astro';
+import { getAllPosts } from '../lib/notion';
+import { SITE } from '../lib/site.config';
+
+const posts = (await getAllPosts()).slice(0, 6);
+
+const websiteJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: SITE.title,
+  url: SITE.url,
+  description: SITE.description,
+};
+---
+
+<BaseLayout jsonLd={websiteJsonLd}>
+  <section class="border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+    <div class="mx-auto max-w-5xl px-6 py-24">
+      <p class="mb-4 text-sm font-semibold uppercase tracking-widest text-[var(--color-brand)]">
+        50代から考える、資産との向き合い方
+      </p>
+      <h1 class="max-w-2xl text-4xl font-bold leading-tight text-[var(--color-ink)] sm:text-5xl">
+        老後に向けた「最後の攻め」と、資産の「守り方」を学ぶ。
+      </h1>
+      <p class="mt-6 max-w-xl text-lg leading-relaxed text-[var(--color-ink-muted)]">
+        気づけば積み上がってきた投資資産。ここから先は増やし方だけでなく、守り方・使い方までを含めた戦略が必要です。
+        実践的な知識を、わかりやすく届けます。
+      </p>
+      <div class="mt-10 flex gap-4">
+        <a
+          href="/blog/1"
+          class="rounded-full bg-[var(--color-brand)] px-7 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-brand-dark)]"
+        >
+          記事を読む
+        </a>
+        <a
+          href="/about"
+          class="rounded-full border border-[var(--color-border)] px-7 py-3 text-sm font-semibold text-[var(--color-ink)] transition-colors hover:border-[var(--color-brand)] hover:text-[var(--color-brand)]"
+        >
+          このサイトについて
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-5xl px-6 py-20">
+    <div class="mb-10 flex items-end justify-between">
+      <h2 class="text-2xl font-bold text-[var(--color-ink)]">新着記事</h2>
+      <a href="/blog/1" class="text-sm font-medium text-[var(--color-brand)] hover:underline">すべて見る →</a>
+    </div>
+
+    {posts.length > 0 ? (
+      <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {posts.map((post) => <PostCard post={post} />)}
+      </div>
+    ) : (
+      <p class="rounded-2xl border border-dashed border-[var(--color-border)] p-10 text-center text-[var(--color-ink-muted)]">
+        まだ公開されている記事がありません。Notionで記事を作成し「公開」フラグをオンにすると、ここに表示されます。
+      </p>
+    )}
+  </section>
+</BaseLayout>

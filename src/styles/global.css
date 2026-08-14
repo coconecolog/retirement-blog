@@ -1,0 +1,45 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@import "@fontsource/noto-sans-jp/400.css";
+@import "@fontsource/noto-sans-jp/500.css";
+@import "@fontsource/noto-sans-jp/700.css";
+
+/*
+  デザイン用のカラー・タイポグラフィのトークン。
+  ブランドカラー／ロゴが確定したら --color-brand 系だけ書き換えれば全体に反映されます。
+*/
+@theme {
+  --font-sans: "Noto Sans JP", "Noto Sans", ui-sans-serif, system-ui, sans-serif;
+
+  --color-paper: #faf9f7;
+  --color-surface: #ffffff;
+  --color-ink: #1c1d21;
+  --color-ink-muted: #64636b;
+  --color-border: #eceae6;
+
+  --color-brand: #3d5a80;
+  --color-brand-dark: #2c4362;
+  --color-brand-soft: #eef2f6;
+  --color-accent: #c98a4b;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+}
+
+.prose {
+  --tw-prose-body: var(--color-ink);
+  --tw-prose-headings: var(--color-ink);
+  --tw-prose-links: var(--color-brand);
+  --tw-prose-bold: var(--color-ink);
+  --tw-prose-quotes: var(--color-ink-muted);
+  --tw-prose-quote-borders: var(--color-border);
+  --tw-prose-code: var(--color-brand-dark);
+}

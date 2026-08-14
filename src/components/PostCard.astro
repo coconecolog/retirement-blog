@@ -1,0 +1,48 @@
+---
+import { formatDate } from '../lib/format';
+import type { Post } from '../lib/notion';
+
+export interface Props {
+  post: Post;
+}
+
+const { post } = Astro.props;
+---
+
+<a
+  href={`/blog/${post.slug}`}
+  class="group flex flex-col overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] transition-shadow hover:shadow-lg hover:shadow-black/5"
+>
+  <div class="aspect-[16/10] w-full overflow-hidden bg-[var(--color-brand-soft)]">
+    {post.thumbnail ? (
+      <img
+        src={post.thumbnail}
+        alt={post.title}
+        loading="lazy"
+        class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+      />
+    ) : (
+      <div class="flex h-full w-full items-center justify-center text-[var(--color-brand)]/40">
+        <span class="text-sm font-medium">{'資産の守り方'}</span>
+      </div>
+    )}
+  </div>
+  <div class="flex flex-1 flex-col gap-3 p-6">
+    {post.tags.length > 0 && (
+      <div class="flex flex-wrap gap-2">
+        {post.tags.slice(0, 3).map((tag) => (
+          <span class="rounded-full bg-[var(--color-brand-soft)] px-3 py-1 text-xs font-medium text-[var(--color-brand-dark)]">
+            {tag}
+          </span>
+        ))}
+      </div>
+    )}
+    <h3 class="text-lg font-bold leading-snug text-[var(--color-ink)] group-hover:text-[var(--color-brand)]">
+      {post.title}
+    </h3>
+    <p class="line-clamp-2 flex-1 text-sm text-[var(--color-ink-muted)]">{post.excerpt}</p>
+    <time datetime={post.publishedAt} class="text-xs text-[var(--color-ink-muted)]">
+      {formatDate(post.publishedAt)}
+    </time>
+  </div>
+</a>

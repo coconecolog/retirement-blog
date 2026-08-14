@@ -1,0 +1,88 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getAllPosts } from '../../lib/notion';
+import { formatDate } from '../../lib/format';
+import { SITE } from '../../lib/site.config';
+
+export async function getStaticPaths() {
+  const posts = await getAllPosts();
+  return posts.map((post) => ({
+    params: { slug: post.slug },
+    props: { post },
+  }));
+}
+
+const { post } = Astro.props as any;
+
+const articleJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  headline: post.title,
+  description: post.excerpt,
+  datePublished: post.publishedAt,
+  dateModified: post.updatedAt,
+  image: post.thumbnail ? [post.thumbnail] : undefined,
+  author: { '@type': 'Organization', name: SITE.title },
+  publisher: { '@type': 'Organization', name: SITE.title },
+  mainEntityOfPage: { '@type': 'WebPage', '@id': new URL(`/blog/${post.slug}`, SITE.url).toString() },
+};
+
+const breadcrumbJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'トップ', item: SITE.url },
+    { '@type': 'ListItem', position: 2, name: 'ブログ', item: new URL('/blog/1', SITE.url).toString() },
+    { '@type': 'ListItem', position: 3, name: post.title, item: new URL(`/blog/${post.slug}`, SITE.url).toString() },
+  ],
+};
+---
+
+<BaseLayout
+  title={post.title}
+  description={post.excerpt}
+  type="article"
+  canonicalPath={`/blog/${post.slug}`}
+  ogImage={`/og/${post.slug}.png`}
+  jsonLd={[articleJsonLd, breadcrumbJsonLd]}
+>
+  <article class="mx-auto max-w-3xl px-6 py-16">
+    <nav class="mb-6 text-sm text-[var(--color-ink-muted)]">
+      <a href="/blog/1" class="hover:text-[var(--color-brand)]">ブログ</a>
+      <span class="mx-2">/</span>
+      <span>{post.title}</span>
+    </nav>
+
+    {post.tags.length > 0 && (
+      <div class="mb-4 flex flex-wrap gap-2">
+        {post.tags.map((tag: string) => (
+          <a
+            href={`/blog/tag/${encodeURIComponent(tag)}/1`}
+            class="rounded-full bg-[var(--color-brand-soft)] px-3 py-1 text-xs font-medium text-[var(--color-brand-dark)] hover:opacity-80"
+          >
+            {tag}
+          </a>
+        ))}
+      </div>
+    )}
+
+    <h1 class="text-3xl font-bold leading-tight text-[var(--color-ink)] sm:text-4xl">{post.title}</h1>
+
+    <div class="mt-4 flex items-center gap-3 text-sm text-[var(--color-ink-muted)]">
+      <time datetime={post.publishedAt}>公開日: {formatDate(post.publishedAt)}</time>
+      {post.updatedAt !== post.publishedAt && (
+        <time datetime={post.updatedAt}>／更新日: {formatDate(post.updatedAt)}</time>
+      )}
+    </div>
+
+    {post.thumbnail && (
+      <img
+        src={post.thumbnail}
+        alt={post.title}
+        class="mt-8 aspect-[16/9] w-full rounded-2xl object-cover"
+      />
+    )}
+
+    <div class="prose prose-neutral mt-10 max-w-none prose-headings:font-bold prose-a:text-[var(--color-brand)]" set:html={post.html} />
+  </article>
+</BaseLayout>

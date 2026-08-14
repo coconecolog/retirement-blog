@@ -1,0 +1,53 @@
+---
+import BaseLayout from '../../../../layouts/BaseLayout.astro';
+import PostCard from '../../../../components/PostCard.astro';
+import TagFilter from '../../../../components/TagFilter.astro';
+import Pagination from '../../../../components/Pagination.astro';
+import { getAllPosts, getAllTags } from '../../../../lib/notion';
+import { SITE } from '../../../../lib/site.config';
+
+export async function getStaticPaths({ paginate }: any) {
+  const posts = await getAllPosts();
+  const tags = await getAllTags();
+
+  return tags.flatMap((tag) => {
+    const filtered = posts.filter((p) => p.tags.includes(tag));
+    return paginate(filtered, {
+      params: { tag },
+      pageSize: SITE.postsPerPage,
+    });
+  });
+}
+
+const { page } = Astro.props as any;
+const { tag } = Astro.params;
+const tags = await getAllTags();
+---
+
+<BaseLayout
+  title={`「${tag}」の記事一覧`}
+  description={`${SITE.title}の「${tag}」タグが付いた記事一覧`}
+  canonicalPath={`/blog/tag/${tag}/${page.currentPage}`}
+>
+  <div class="mx-auto max-w-5xl px-6 py-16">
+    <div class="mb-10">
+      <h1 class="text-3xl font-bold text-[var(--color-ink)]">「{tag}」の記事</h1>
+    </div>
+
+    <div class="mb-10">
+      <TagFilter tags={tags} activeTag={tag} />
+    </div>
+
+    {page.data.length > 0 ? (
+      <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {page.data.map((post: any) => <PostCard post={post} />)}
+      </div>
+    ) : (
+      <p class="rounded-2xl border border-dashed border-[var(--color-border)] p-10 text-center text-[var(--color-ink-muted)]">
+        該当する記事がありません。
+      </p>
+    )}
+
+    <Pagination currentPage={page.currentPage} lastPage={page.lastPage} basePath={`/blog/tag/${tag}`} />
+  </div>
+</BaseLayout>

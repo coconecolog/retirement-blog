@@ -1,0 +1,24 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { SITE } from '../lib/site.config';
+---
+
+<BaseLayout title="ABOUT" description={`${SITE.title}について`} canonicalPath="/about">
+  <div class="mx-auto max-w-3xl px-6 py-16">
+    <h1 class="text-3xl font-bold text-[var(--color-ink)]">ABOUT</h1>
+    <div class="prose prose-neutral mt-8 max-w-none">
+      <p>
+        このサイトは、50代前後で気づけば投資資産が積み上がってきた方に向けて、老後に向けた「最後の攻め」と
+        「資産の守り方」を学んでいただくための情報サイトです。
+      </p>
+      <p>
+        資産を増やすことに慣れてきた方でも、いざ「取り崩す」「守る」フェーズになると、勝手が違うもの。
+        このサイトでは、出口戦略・リスク管理・制度の活用など、実践的なテーマを取り上げていきます。
+      </p>
+      <p class="text-sm text-[var(--color-ink-muted)]">
+        ※ このページの文章は仮の内容です。運営者情報やサイトの想いなど、確定した内容に差し替えてください
+        （<code>src/pages/about.astro</code>）。
+      </p>
+    </div>
+  </div>
+</BaseLayout>

@@ -1,0 +1,23 @@
+---
+export interface Props {
+  currentPage: number;
+  lastPage: number;
+  basePath: string; // 例: "/blog" または "/blog/tag/投資"
+}
+
+const { currentPage, lastPage, basePath } = Astro.props;
+const prevHref = currentPage > 1 ? `${basePath}/${currentPage - 1}` : null;
+const nextHref = currentPage < lastPage ? `${basePath}/${currentPage + 1}` : null;
+---
+
+{lastPage > 1 && (
+  <nav class="mt-12 flex items-center justify-between border-t border-[var(--color-border)] pt-6">
+    {prevHref ? (
+      <a href={prevHref} class="text-sm font-medium text-[var(--color-brand)] hover:underline">← 前のページ</a>
+    ) : <span></span>}
+    <span class="text-sm text-[var(--color-ink-muted)]">{currentPage} / {lastPage}</span>
+    {nextHref ? (
+      <a href={nextHref} class="text-sm font-medium text-[var(--color-brand)] hover:underline">次のページ →</a>
+    ) : <span></span>}
+  </nav>
+)}

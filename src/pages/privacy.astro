@@ -1,0 +1,29 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { SITE } from '../lib/site.config';
+---
+
+<BaseLayout title="個人情報の取り扱いについて" description="個人情報の取り扱いについて" canonicalPath="/privacy">
+  <div class="mx-auto max-w-3xl px-6 py-16">
+    <h1 class="text-3xl font-bold text-[var(--color-ink)]">個人情報の取り扱いについて</h1>
+    <div class="prose prose-neutral mt-8 max-w-none">
+      <p>
+        {SITE.title}（以下「当サイト」）は、ユーザーの個人情報の重要性を認識し、以下の方針に基づき適切に取り扱います。
+      </p>
+      <h2>アクセス解析ツールについて</h2>
+      <p>
+        当サイトでは、Google Analytics、Google Search Console、Microsoft Clarityを利用しています。
+        これらのツールはCookie等を用いてトラフィックデータを収集しますが、個人を特定する情報は含まれません。
+        この機能はCookieを無効にすることで収集を拒否することが可能です。
+      </p>
+      <h2>広告について</h2>
+      <p>現時点で第三者配信の広告は使用していません（導入する場合はこのページを更新してください）。</p>
+      <h2>お問い合わせ</h2>
+      <p>個人情報の取り扱いに関するお問い合わせは、運営者情報ページ（準備中）よりご連絡ください。</p>
+      <p class="text-sm text-[var(--color-ink-muted)]">
+        ※ このページの文章は一般的なひな形です。実際の運用内容に合わせて必ず内容を確認・修正してください
+        （<code>src/pages/privacy.astro</code>）。法的な最終確認は専門家にご相談ください。
+      </p>
+    </div>
+  </div>
+</BaseLayout>
