@@ -19,6 +19,8 @@ export const PROP = {
   published: '公開',
   // 半角英数字とハイフンで指定するURL用のスラッグ。空欄ならページIDを自動で使う。
   slug: 'スラッグ',
+  // 検索結果・OGPに使うメタディスクリプション。空欄なら本文からの自動抜粋を使う。
+  description: 'ディスクリプション',
 } as const;
 
 export type Post = {
@@ -31,6 +33,7 @@ export type Post = {
   thumbnail: string | null;
   html: string;
   excerpt: string;
+  description: string;
 };
 
 let cachedPosts: Post[] | null = null;
@@ -75,6 +78,13 @@ function getCustomSlug(prop: any): string | null {
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
   return cleaned || null;
+}
+
+// 「ディスクリプション」プロパティ（rich_text）の値をそのまま取得する。空欄なら null。
+function getCustomText(prop: any): string | null {
+  const raw: string = prop?.rich_text?.map((t: any) => t.plain_text).join('') ?? '';
+  const trimmed = raw.trim();
+  return trimmed || null;
 }
 
 function makeExcerpt(markdown: string, length = 110): string {
@@ -149,6 +159,8 @@ export async function getAllPosts(): Promise<Post[]> {
       }
 
       const html = await marked.parse(mdString || '');
+      const excerpt = makeExcerpt(mdString);
+      const customDescription = getCustomText(props[PROP.description]);
 
       posts.push({
         id: page.id,
@@ -159,7 +171,8 @@ export async function getAllPosts(): Promise<Post[]> {
         updatedAt,
         thumbnail,
         html,
-        excerpt: makeExcerpt(mdString),
+        excerpt,
+        description: customDescription || excerpt,
       });
     }
 
