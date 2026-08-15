@@ -21,7 +21,7 @@ const articleJsonLd = {
   description: post.description,
   datePublished: post.publishedAt,
   dateModified: post.updatedAt,
-  image: post.thumbnail ? [post.thumbnail] : undefined,
+  image: post.thumbnail ? [new URL(post.thumbnail, SITE.url).toString()] : undefined,
   author: { '@type': 'Organization', name: SITE.title },
   publisher: { '@type': 'Organization', name: SITE.title },
   mainEntityOfPage: { '@type': 'WebPage', '@id': new URL(`/blog/${post.slug}`, SITE.url).toString() },
@@ -59,7 +59,7 @@ const breadcrumbJsonLd = {
       <div class="mb-4 flex flex-wrap gap-2">
         {post.tags.map((tag: string) => (
           
-            <a href={`/blog/tag/${encodeURIComponent(tag)}`}
+            href={`/blog/tag/${encodeURIComponent(tag)}`}
             class="rounded-full bg-[var(--color-brand-soft)] px-3 py-1 text-xs font-medium text-[var(--color-brand-dark)] hover:opacity-80"
           >
             {tag}
