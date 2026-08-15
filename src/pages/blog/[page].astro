@@ -21,6 +21,12 @@ const tags = await getAllTags();
   canonicalPath={page.currentPage === 1 ? '/blog' : `/blog/${page.currentPage}`}
 >
   <div class="mx-auto max-w-5xl px-6 py-16">
+    <nav class="mb-6 text-sm text-[var(--color-ink-muted)]">
+      <a href="/" class="hover:text-[var(--color-brand)]">トップ</a>
+      <span class="mx-2">/</span>
+      <span>ブログ一覧</span>
+    </nav>
+
     <div class="mb-10">
       <h1 class="text-3xl font-bold text-[var(--color-ink)]">ブログ</h1>
       <p class="mt-3 max-w-2xl text-[var(--color-ink-muted)]">
