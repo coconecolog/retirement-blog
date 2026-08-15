@@ -6,9 +6,27 @@
 import { Client } from '@notionhq/client';
 import { NotionToMarkdown } from 'notion-to-md';
 import { marked } from 'marked';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const NOTION_DATABASE_ID = process.env.NOTION_DATABASE_ID;
+
+// サムネイル画像の保存先。
+// 本来は public/ 配下に置きたいところだが、Astroはビルド開始時の早い段階で public/ の中身を
+// dist/ へコピーしてしまい、その後（getStaticPathsの実行中）に public/ へファイルを書き足しても
+// 出力には反映されない。そのためビルド出力先（dist/）に直接書き込む。
+// `npm run build`（= astro build）はプロジェクトのルートディレクトリで実行される前提。
+const THUMBNAIL_DIR = path.join(process.cwd(), 'dist', 'thumbnails') + path.sep;
+
+const EXT_BY_CONTENT_TYPE: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/jpg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
+  'image/svg+xml': 'svg',
+};
 
 export const PROP = {
   title: 'タイトル',
@@ -65,6 +83,44 @@ function getThumbnail(prop: any): string | null {
 // Notion page id（ハイフン付きUUID）からハイフンを除いたものをスラッグとして使用（フォールバック用）。
 function toSlug(pageId: string): string {
   return pageId.replace(/-/g, '');
+}
+
+// サムネイル画像のURL（Notionにアップロードしたファイル、またはCanva等からダウンロードして
+// Notionにアップロードしたファイル）を実際にダウンロードし、サイト自身のファイルとして保存する。
+//
+// これが必要な理由:
+// ・Notionにアップロードしたファイルの参照URLは1時間ほどで失効するため、ビルド時にそのURLを
+//   そのままサイトに埋め込むと、公開後しばらくして画像が表示されなくなる。
+// ・ここで画像を取得できた場合のみサイトのファイルとして保存し、失敗した場合（URLの指す先が
+//   画像ファイルでない等）は null を返して呼び出し側でプレースホルダー表示にフォールバックする。
+async function downloadThumbnail(url: string, pageId: string): Promise<string | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.warn(`[notion] サムネイル画像の取得に失敗しました（HTTP ${res.status}）: ${url}`);
+      return null;
+    }
+    const contentType = res.headers.get('content-type')?.split(';')[0]?.trim() ?? '';
+    const ext = EXT_BY_CONTENT_TYPE[contentType];
+    if (!ext) {
+      console.warn(
+        `[notion] サムネイル画像のURLの中身が画像ファイルではないようです（Content-Type: ${
+          contentType || '不明'
+        }）。Notionのサムネイル画像プロパティには画像ファイルそのものを直接アップロードしてください。URL: ${url}`
+      );
+      return null;
+    }
+    if (!existsSync(THUMBNAIL_DIR)) {
+      mkdirSync(THUMBNAIL_DIR, { recursive: true });
+    }
+    const filename = `${toSlug(pageId)}.${ext}`;
+    const buffer = Buffer.from(await res.arrayBuffer());
+    writeFileSync(`${THUMBNAIL_DIR}${filename}`, buffer);
+    return `/thumbnails/${filename}`;
+  } catch (err) {
+    console.warn(`[notion] サムネイル画像の取得中にエラーが発生しました: ${url}`, err);
+    return null;
+  }
 }
 
 // 「スラッグ」プロパティ（rich_text）の値を取得し、URLとして安全な形に整形する。
@@ -139,7 +195,8 @@ export async function getAllPosts(): Promise<Post[]> {
       const tags: string[] = (props[PROP.tags]?.multi_select ?? []).map((t: any) => t.name);
       const publishedAt: string = props[PROP.publishedAt]?.date?.start ?? page.created_time;
       const updatedAt: string = props[PROP.updatedAt]?.date?.start ?? page.last_edited_time;
-      const thumbnail = getThumbnail(props[PROP.thumbnail]);
+      const rawThumbnail = getThumbnail(props[PROP.thumbnail]);
+      const thumbnail = rawThumbnail ? await downloadThumbnail(rawThumbnail, page.id) : null;
 
       const fallbackSlug = toSlug(page.id);
       const customSlug = getCustomSlug(props[PROP.slug]);
