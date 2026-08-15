@@ -5,6 +5,12 @@ import { SITE } from '../lib/site.config';
 
 <BaseLayout title="ABOUT" description={`${SITE.title}について`} canonicalPath="/about">
   <div class="mx-auto max-w-3xl px-6 py-16">
+    <nav class="mb-6 text-sm text-[var(--color-ink-muted)]">
+      <a href="/" class="hover:text-[var(--color-brand)]">トップ</a>
+      <span class="mx-2">/</span>
+      <span>ABOUT</span>
+    </nav>
+
     <h1 class="text-3xl font-bold text-[var(--color-ink)]">ABOUT</h1>
     <div class="prose prose-neutral mt-8 max-w-none">
       <p>
