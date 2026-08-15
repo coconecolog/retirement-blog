@@ -10,7 +10,7 @@ const { tags, activeTag } = Astro.props;
 {tags.length > 0 && (
   <div class="flex flex-wrap gap-2">
     
-      href="/blog"
+      <a href="/blog"
       class={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
         !activeTag
           ? 'border-[var(--color-brand)] bg-[var(--color-brand)] text-white'
@@ -21,7 +21,7 @@ const { tags, activeTag } = Astro.props;
     </a>
     {tags.map((tag) => (
       
-        href={`/blog/tag/${encodeURIComponent(tag)}`}
+        <a href={`/blog/tag/${encodeURIComponent(tag)}`}
         class={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
           activeTag === tag
             ? 'border-[var(--color-brand)] bg-[var(--color-brand)] text-white'
