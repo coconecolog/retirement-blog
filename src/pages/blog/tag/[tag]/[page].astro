@@ -27,7 +27,7 @@ const tags = await getAllTags();
 <BaseLayout
   title={`「${tag}」の記事一覧`}
   description={`${SITE.title}の「${tag}」タグが付いた記事一覧`}
-  canonicalPath={`/blog/tag/${tag}/${page.currentPage}`}
+  canonicalPath={page.currentPage === 1 ? `/blog/tag/${tag}` : `/blog/tag/${tag}/${page.currentPage}`}
 >
   <div class="mx-auto max-w-5xl px-6 py-16">
     <div class="mb-10">
