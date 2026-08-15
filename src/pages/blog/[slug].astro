@@ -18,7 +18,7 @@ const articleJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'Article',
   headline: post.title,
-  description: post.excerpt,
+  description: post.description,
   datePublished: post.publishedAt,
   dateModified: post.updatedAt,
   image: post.thumbnail ? [post.thumbnail] : undefined,
@@ -40,7 +40,7 @@ const breadcrumbJsonLd = {
 
 <BaseLayout
   title={post.title}
-  description={post.excerpt}
+  description={post.description}
   type="article"
   canonicalPath={`/blog/${post.slug}`}
   ogImage={`/og/${post.slug}.png`}
