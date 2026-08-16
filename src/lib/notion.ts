@@ -5,7 +5,7 @@
 
 import { Client } from '@notionhq/client';
 import { NotionToMarkdown } from 'notion-to-md';
-import { marked } from 'marked';
+import { marked, Renderer } from 'marked';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
@@ -39,7 +39,14 @@ export const PROP = {
   slug: 'スラッグ',
   // 検索結果・OGPに使うメタディスクリプション。空欄なら本文からの自動抜粋を使う。
   description: 'ディスクリプション',
+  // 記事ページの「この記事でわかること」ボックスに表示する要点。空欄なら非表示。
+  summary: '記事の要点',
 } as const;
+
+export type TocItem = {
+  id: string;
+  text: string;
+};
 
 export type Post = {
   id: string;
@@ -50,8 +57,10 @@ export type Post = {
   updatedAt: string;
   thumbnail: string | null;
   html: string;
+  toc: TocItem[];
   excerpt: string;
   description: string;
+  summary: string | null;
 };
 
 let cachedPosts: Post[] | null = null;
@@ -143,6 +152,27 @@ function getCustomText(prop: any): string | null {
   return trimmed || null;
 }
 
+// 本文のMarkdownをHTMLに変換すると同時に、見出し2（##）に自動でIDを振り、
+// 目次（見出しのリスト）を作る。目次はブログ記事ページのキービジュアル下に表示する。
+function renderContentWithToc(markdown: string): { html: string; toc: TocItem[] } {
+  const toc: TocItem[] = [];
+  let count = 0;
+  const renderer = new Renderer();
+  renderer.heading = function (this: any, { tokens, depth }: any) {
+    const inner = this.parser.parseInline(tokens);
+    if (depth === 2) {
+      count += 1;
+      const id = `heading-${count}`;
+      const text = inner.replace(/<[^>]+>/g, '').trim();
+      toc.push({ id, text });
+      return `<h2 id="${id}">${inner}</h2>\n`;
+    }
+    return `<h${depth}>${inner}</h${depth}>\n`;
+  };
+  const html = marked.parse(markdown, { renderer }) as string;
+  return { html, toc };
+}
+
 function makeExcerpt(markdown: string, length = 110): string {
   const plain = markdown
     .replace(/```[\s\S]*?```/g, '')
@@ -215,9 +245,10 @@ export async function getAllPosts(): Promise<Post[]> {
         console.error(`[notion] 本文の取得に失敗しました: ${title} (${page.id})`, err);
       }
 
-      const html = await marked.parse(mdString || '');
+      const { html, toc } = renderContentWithToc(mdString || '');
       const excerpt = makeExcerpt(mdString);
       const customDescription = getCustomText(props[PROP.description]);
+      const summary = getCustomText(props[PROP.summary]);
 
       posts.push({
         id: page.id,
@@ -228,8 +259,10 @@ export async function getAllPosts(): Promise<Post[]> {
         updatedAt,
         thumbnail,
         html,
+        toc,
         excerpt,
         description: customDescription || excerpt,
+        summary,
       });
     }
 
