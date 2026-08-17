@@ -58,6 +58,10 @@ body {
   color: var(--color-ink);
 }
 
+.prose .notion-callout p + p {
+  margin-top: 0.75em;
+}
+
 /* Notionの画像ブロック（figure/figcaption）用。 */
 .prose .notion-figure {
   margin: 2em 0;
