@@ -74,3 +74,18 @@ body {
   font-size: 0.875em;
   color: var(--color-ink-muted);
 }
+
+.prose .notion-figure figcaption a {
+  color: var(--color-brand);
+  text-decoration: underline;
+}
+
+/* Notionの「見出し4」ブロック用。左に縦線を入れたデザイン。 */
+.prose h4.notion-heading-4 {
+  margin-top: 1.75em;
+  margin-bottom: 0.75em;
+  padding-left: 0.75rem;
+  border-left: 4px solid var(--color-brand);
+  font-size: 1.05em;
+  line-height: 1.5;
+}
