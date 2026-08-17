@@ -132,6 +132,60 @@ async function downloadThumbnail(url: string, pageId: string): Promise<string | 
   }
 }
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// Notionの「コールアウト」ブロックをMarkdownの引用（>）ではなく、独自のHTML（div.notion-callout）に変換する。
+// これにより、記事ページ側で「引用ブロック」と見た目を区別できるようにする（コールアウトは枠線・斜体なし）。
+function calloutToHtml(block: any): string {
+  const callout = block.callout ?? {};
+  const icon = callout.icon;
+  const emoji = icon?.type === 'emoji' ? `${icon.emoji} ` : '';
+  const text: string = (callout.rich_text ?? []).map((t: any) => t.plain_text).join('');
+  const html = escapeHtml(text).replace(/\n/g, '<br>\n');
+  return `\n<div class="notion-callout">\n<p>${emoji}${html}</p>\n</div>\n\n`;
+}
+
+// Notionの画像ブロックをMarkdownの画像記法ではなく、独自のHTML（figure/figcaption）に変換する。
+//
+// Notionの画像ブロックには「キャプション」欄が1つしかなく、alt（代替テキスト）専用の欄はない。
+// そのため、このキャプション欄の入力ルールで両方をまかなう:
+// ・空欄                     → altなし、キャプション非表示（従来通り画像のみ表示）
+// ・「alt:」または「alt：」で始める → altのみ設定（キャプションは表示されない）
+// ・それ以外の通常のテキスト        → そのテキストをaltとして設定し、キャプションとしても表示する
+function imageToHtml(block: any): string {
+  const image = block.image ?? {};
+  const type = image.type;
+  let src = '';
+  if (type === 'external') src = image.external?.url ?? '';
+  if (type === 'file') src = image.file?.url ?? '';
+  if (!src) return '';
+
+  const rawCaption: string = (image.caption ?? []).map((t: any) => t.plain_text).join('').trim();
+
+  let alt = '';
+  let visibleCaption: string | null = null;
+  const altOnlyMatch = rawCaption.match(/^alt[:：]\s*([\s\S]*)$/i);
+  if (altOnlyMatch) {
+    alt = altOnlyMatch[1].trim();
+  } else if (rawCaption) {
+    alt = rawCaption;
+    visibleCaption = rawCaption;
+  }
+
+  const imgTag = `<img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" loading="lazy" />`;
+  if (visibleCaption) {
+    const captionHtml = escapeHtml(visibleCaption).replace(/\n/g, '<br>\n');
+    return `\n<figure class="notion-figure">\n${imgTag}\n<figcaption>${captionHtml}</figcaption>\n</figure>\n\n`;
+  }
+  return `\n<figure class="notion-figure">\n${imgTag}\n</figure>\n\n`;
+}
+
 // 「スラッグ」プロパティ（rich_text）の値を取得し、URLとして安全な形に整形する。
 // 半角英数字・ハイフン以外は取り除き、空欄なら null を返す（呼び出し側でページIDにフォールバック）。
 function getCustomSlug(prop: any): string | null {
@@ -194,6 +248,10 @@ export async function getAllPosts(): Promise<Post[]> {
   }
 
   const n2m = new NotionToMarkdown({ notionClient: notion });
+  // コールアウト・画像ブロックは独自のHTML変換にする（詳細は各関数のコメントを参照）。
+  // 引用（quote）ブロックはここで変換を上書きしないため、従来通りの見た目（枠線・斜体）のまま。
+  n2m.setCustomTransformer('callout', async (block: any) => calloutToHtml(block));
+  n2m.setCustomTransformer('image', async (block: any) => imageToHtml(block));
   const posts: Post[] = [];
   const usedSlugs = new Set<string>();
   let cursor: string | undefined = undefined;
