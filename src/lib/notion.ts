@@ -162,6 +162,50 @@ function richTextToInlineHtml(richText: any[]): string {
     .join('');
 }
 
+// Notionの「表（テーブル）」ブロックをMarkdownの表記法ではなく、独自のHTML（table/thead/tbody）に変換する。
+//
+// これが必要な理由:
+// 標準の変換では、表のセルの中で改行（Shift+Enterでの改行や、セル内の複数行のテキスト）が含まれていると、
+// Markdownの表の記法（1行1レコード）が崩れてしまい、表そのものが正しく組み立てられなくなる不具合があった
+// （セルが別の行にはみ出す、太字の**が記号のまま表示される、など）。
+// ここではMarkdownを経由せず直接HTMLを組み立てるため、セル内の改行や太字・リンクなどの書式が保たれる。
+async function tableToHtml(notion: Client, block: any): Promise<string> {
+  const table = block.table ?? {};
+  const hasColumnHeader: boolean = !!table.has_column_header;
+  if (!block.has_children) return '';
+
+  let rows: any[] = [];
+  try {
+    const res: any = await notion.blocks.children.list({ block_id: block.id, page_size: 100 });
+    rows = (res.results ?? []).filter((r: any) => r.type === 'table_row');
+  } catch (err) {
+    console.warn(`[notion] 表の行の取得に失敗しました: ${block.id}`, err);
+    return '';
+  }
+  if (rows.length === 0) return '';
+
+  // 行ごとに「セルのHTML文字列の配列」を作る（文字列に結合してから分割する、といったことはしない。
+  // セルの中身自体にスペースが含まれるため、結合してから分割すると壊れてしまう）。
+  const rowsCells: string[][] = rows.map((row: any) => {
+    const cells: any[][] = row.table_row?.cells ?? [];
+    return cells.map((cell) => richTextToInlineHtml(cell ?? []));
+  });
+
+  let bodyStart = 0;
+  let theadHtml = '';
+  if (hasColumnHeader && rowsCells.length > 0) {
+    theadHtml = `<thead><tr>${rowsCells[0].map((c) => `<th>${c}</th>`).join('')}</tr></thead>`;
+    bodyStart = 1;
+  }
+
+  const bodyRowsHtml = rowsCells
+    .slice(bodyStart)
+    .map((cells) => `<tr>${cells.map((c) => `<td>${c}</td>`).join('')}</tr>`)
+    .join('');
+
+  return `\n<table class="notion-table">${theadHtml}<tbody>${bodyRowsHtml}</tbody></table>\n\n`;
+}
+
 // Notionの「見出し4」ブロックをHTMLの<h4>にそのまま変換する。
 // notion-to-mdは見出し1〜3までしか標準対応していないため、これがないと見出し4は素の段落（<p>）になってしまう。
 function heading4ToHtml(block: any): string {
@@ -328,11 +372,12 @@ export async function getAllPosts(): Promise<Post[]> {
   }
 
   const n2m = new NotionToMarkdown({ notionClient: notion });
-  // 見出し4・コールアウト・画像ブロックは独自のHTML変換にする（詳細は各関数のコメントを参照）。
+  // 見出し4・コールアウト・画像・表ブロックは独自のHTML変換にする（詳細は各関数のコメントを参照）。
   // 引用（quote）ブロックはここで変換を上書きしないため、従来通りの見た目（枠線・斜体）のまま。
   n2m.setCustomTransformer('heading_4', async (block: any) => heading4ToHtml(block));
   n2m.setCustomTransformer('callout', async (block: any) => calloutToHtml(notion, block));
   n2m.setCustomTransformer('image', async (block: any) => imageToHtml(block));
+  n2m.setCustomTransformer('table', async (block: any) => tableToHtml(notion, block));
   const posts: Post[] = [];
   const usedSlugs = new Set<string>();
   let cursor: string | undefined = undefined;
