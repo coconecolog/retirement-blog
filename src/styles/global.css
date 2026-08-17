@@ -93,3 +93,25 @@ body {
   font-size: 1.05em;
   line-height: 1.5;
 }
+
+/* Notionの「表（テーブル）」ブロック用。 */
+.prose table.notion-table {
+  width: 100%;
+  margin: 1.75em 0;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+
+.prose table.notion-table th,
+.prose table.notion-table td {
+  border: 1px solid var(--color-border);
+  padding: 0.6em 0.9em;
+  text-align: left;
+  vertical-align: top;
+}
+
+.prose table.notion-table thead th {
+  background-color: var(--color-brand-soft);
+  color: var(--color-ink);
+  font-weight: 700;
+}
