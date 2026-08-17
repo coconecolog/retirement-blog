@@ -58,10 +58,7 @@ const breadcrumbJsonLd = {
     {post.tags.length > 0 && (
       <div class="mb-4 flex flex-wrap gap-2">
         {post.tags.map((tag: string) => (
-          
-            <a href={`/blog/tag/${encodeURIComponent(tag)}`}
-            class="rounded-full bg-[var(--color-brand-soft)] px-3 py-1 text-xs font-medium text-[var(--color-brand-dark)] hover:opacity-80"
-          >
+          <a href={`/blog/tag/${encodeURIComponent(tag)}`} class="rounded-full bg-[var(--color-brand-soft)] px-3 py-1 text-xs font-medium text-[var(--color-brand-dark)] hover:opacity-80">
             {tag}
           </a>
         ))}
@@ -96,15 +93,24 @@ const breadcrumbJsonLd = {
       <nav class="mt-8 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-4" aria-label="目次">
         <p class="mb-2 text-sm font-semibold text-[var(--color-ink)]">目次</p>
         <ol class="space-y-1 text-sm">
-          {post.toc.map((item: { id: string; text: string }) => (
+          {post.toc.map((item: { id: string; text: string; children: { id: string; text: string }[] }) => (
             <li>
               <a href={`#${item.id}`} class="text-[var(--color-brand)] hover:underline">{item.text}</a>
+              {item.children.length > 0 && (
+                <ol class="mt-1 ml-4 space-y-1">
+                  {item.children.map((child) => (
+                    <li>
+                      <a href={`#${child.id}`} class="text-[var(--color-ink-muted)] hover:text-[var(--color-brand)] hover:underline">{child.text}</a>
+                    </li>
+                  ))}
+                </ol>
+              )}
             </li>
           ))}
         </ol>
       </nav>
     )}
 
-    <div class="prose prose-neutral mt-10 max-w-none prose-headings:font-bold prose-h2:scroll-mt-28 prose-a:text-[var(--color-brand)]" set:html={post.html} />
+    <div class="prose prose-neutral mt-10 max-w-none prose-headings:font-bold prose-h2:scroll-mt-28 prose-h3:scroll-mt-28 prose-a:text-[var(--color-brand)]" set:html={post.html} />
   </article>
 </BaseLayout>
