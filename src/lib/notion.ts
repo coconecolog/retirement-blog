@@ -171,7 +171,10 @@ function richTextToInlineHtml(richText: any[]): string {
 // ここではMarkdownを経由せず直接HTMLを組み立てるため、セル内の改行や太字・リンクなどの書式が保たれる。
 async function tableToHtml(notion: Client, block: any): Promise<string> {
   const table = block.table ?? {};
+  // Notionの表ブロックの設定（「列の見出し」「行の見出し」）をそのまま反映する。
+  // どちらもオン/オフ独立していて、片方だけ・両方・どちらもなし、すべてのパターンがありうる。
   const hasColumnHeader: boolean = !!table.has_column_header;
+  const hasRowHeader: boolean = !!table.has_row_header;
   if (!block.has_children) return '';
 
   let rows: any[] = [];
@@ -194,13 +197,22 @@ async function tableToHtml(notion: Client, block: any): Promise<string> {
   let bodyStart = 0;
   let theadHtml = '';
   if (hasColumnHeader && rowsCells.length > 0) {
-    theadHtml = `<thead><tr>${rowsCells[0].map((c) => `<th>${c}</th>`).join('')}</tr></thead>`;
+    // 1行目を列の見出し行として<thead>に入れる。
+    theadHtml = `<thead><tr>${rowsCells[0].map((c) => `<th scope="col">${c}</th>`).join('')}</tr></thead>`;
     bodyStart = 1;
   }
 
   const bodyRowsHtml = rowsCells
     .slice(bodyStart)
-    .map((cells) => `<tr>${cells.map((c) => `<td>${c}</td>`).join('')}</tr>`)
+    .map((cells) => {
+      const cellsHtml = cells
+        .map((c, i) =>
+          // 行の見出しが有効な場合、各行の1列目だけ<th>にする（2列目以降は通常のセル）。
+          hasRowHeader && i === 0 ? `<th scope="row">${c}</th>` : `<td>${c}</td>`
+        )
+        .join('');
+      return `<tr>${cellsHtml}</tr>`;
+    })
     .join('');
 
   return `\n<table class="notion-table">${theadHtml}<tbody>${bodyRowsHtml}</tbody></table>\n\n`;
