@@ -115,12 +115,8 @@ body {
   font-weight: 400;
 }
 
-.prose table.notion-table thead th {
-  background-color: var(--color-brand-soft);
-  color: var(--color-ink);
-}
-
-/* 行の見出し（各行の1列目）が有効な場合の見た目。列の見出しより控えめな背景にして区別する。 */
+/* 列の見出し（thead）と行の見出し（各行の1列目）は同じ背景色にする。 */
+.prose table.notion-table thead th,
 .prose table.notion-table tbody th[scope="row"] {
   background-color: var(--color-paper);
   color: var(--color-ink);
