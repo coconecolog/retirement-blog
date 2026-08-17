@@ -168,15 +168,41 @@ function heading4ToHtml(block: any): string {
   return `\n<h4 class="notion-heading-4">${html}</h4>\n\n`;
 }
 
+// コールアウトブロックの中で改行（Enter）を押して段落を追加すると、Notion上ではその段落は
+// コールアウトブロックの「子ブロック」として保存される（コールアウト自身のrich_textには含まれない）。
+// そのため、子ブロックがある場合はAPIから取得し、段落として追記する。
+// ここでは段落・箇条書きなど、rich_textを持つ単純なブロックのみ対応する（表・画像等のネストは非対応）。
+async function calloutChildrenToHtml(notion: Client, blockId: string): Promise<string> {
+  try {
+    const res: any = await notion.blocks.children.list({ block_id: blockId, page_size: 100 });
+    const parts: string[] = [];
+    for (const child of res.results ?? []) {
+      const childType = child.type;
+      const richText = child[childType]?.rich_text;
+      if (!richText) continue;
+      const html = richTextToInlineHtml(richText);
+      if (html.trim()) parts.push(`<p>${html}</p>`);
+    }
+    return parts.join('\n');
+  } catch (err) {
+    console.warn(`[notion] コールアウト内の続きの段落の取得に失敗しました: ${blockId}`, err);
+    return '';
+  }
+}
+
 // Notionの「コールアウト」ブロックをMarkdownの引用（>）ではなく、独自のHTML（div.notion-callout）に変換する。
 // これにより、記事ページ側で「引用ブロック」と見た目を区別できるようにする（コールアウトは枠線・斜体なし）。
-function calloutToHtml(block: any): string {
+async function calloutToHtml(notion: Client, block: any): Promise<string> {
   const callout = block.callout ?? {};
   const icon = callout.icon;
   const emoji = icon?.type === 'emoji' ? `${icon.emoji} ` : '';
-  const text: string = (callout.rich_text ?? []).map((t: any) => t.plain_text).join('');
-  const html = escapeHtml(text).replace(/\n/g, '<br>\n');
-  return `\n<div class="notion-callout">\n<p>${emoji}${html}</p>\n</div>\n\n`;
+  const firstLineHtml = richTextToInlineHtml(callout.rich_text ?? []);
+  let bodyHtml = `<p>${emoji}${firstLineHtml}</p>`;
+  if (block.has_children) {
+    const childrenHtml = await calloutChildrenToHtml(notion, block.id);
+    if (childrenHtml) bodyHtml += `\n${childrenHtml}`;
+  }
+  return `\n<div class="notion-callout">\n${bodyHtml}\n</div>\n\n`;
 }
 
 // Notionの画像ブロックをMarkdownの画像記法ではなく、独自のHTML（figure/figcaption）に変換する。
@@ -280,7 +306,7 @@ export async function getAllPosts(): Promise<Post[]> {
   // 見出し4・コールアウト・画像ブロックは独自のHTML変換にする（詳細は各関数のコメントを参照）。
   // 引用（quote）ブロックはここで変換を上書きしないため、従来通りの見た目（枠線・斜体）のまま。
   n2m.setCustomTransformer('heading_4', async (block: any) => heading4ToHtml(block));
-  n2m.setCustomTransformer('callout', async (block: any) => calloutToHtml(block));
+  n2m.setCustomTransformer('callout', async (block: any) => calloutToHtml(notion, block));
   n2m.setCustomTransformer('image', async (block: any) => imageToHtml(block));
   const posts: Post[] = [];
   const usedSlugs = new Set<string>();
