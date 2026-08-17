@@ -43,3 +43,34 @@ body {
   --tw-prose-quote-borders: var(--color-border);
   --tw-prose-code: var(--color-brand-dark);
 }
+
+/* Notionの「コールアウト」ブロック用。引用（blockquote）とは違い、枠線・斜体なしの背景ボックス表示にする。 */
+.prose .notion-callout {
+  margin: 1.75em 0;
+  padding: 1rem 1.25rem;
+  border-radius: 0.75rem;
+  background-color: var(--color-brand-soft);
+}
+
+.prose .notion-callout p {
+  margin: 0;
+  font-style: normal;
+  color: var(--color-ink);
+}
+
+/* Notionの画像ブロック（figure/figcaption）用。 */
+.prose .notion-figure {
+  margin: 2em 0;
+}
+
+.prose .notion-figure img {
+  width: 100%;
+  border-radius: 1rem;
+}
+
+.prose .notion-figure figcaption {
+  margin-top: 0.6em;
+  text-align: center;
+  font-size: 0.875em;
+  color: var(--color-ink-muted);
+}
