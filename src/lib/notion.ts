@@ -140,6 +140,34 @@ function escapeHtml(text: string): string {
     .replace(/"/g, '&quot;');
 }
 
+// Notionのリッチテキスト配列（太字・リンクなどの書式付きテキスト）を、書式を保ったままインラインHTMLに変換する。
+// キャプションなどで「一部の文字だけにリンクが貼ってある」ケースでも、そのリンクを保持するために使う。
+function richTextToInlineHtml(richText: any[]): string {
+  return (richText ?? [])
+    .map((t: any) => {
+      const raw: string = t.plain_text ?? '';
+      let html = escapeHtml(raw).replace(/\n/g, '<br>\n');
+      const ann = t.annotations ?? {};
+      if (ann.code) html = `<code>${html}</code>`;
+      if (ann.bold) html = `<strong>${html}</strong>`;
+      if (ann.italic) html = `<em>${html}</em>`;
+      if (ann.strikethrough) html = `<s>${html}</s>`;
+      if (ann.underline) html = `<u>${html}</u>`;
+      const href: string | null = t.href ?? null;
+      if (href) html = `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${html}</a>`;
+      return html;
+    })
+    .join('');
+}
+
+// Notionの「見出し4」ブロックをHTMLの<h4>にそのまま変換する。
+// notion-to-mdは見出し1〜3までしか標準対応していないため、これがないと見出し4は素の段落（<p>）になってしまう。
+function heading4ToHtml(block: any): string {
+  const heading = block.heading_4 ?? {};
+  const html = richTextToInlineHtml(heading.rich_text ?? []);
+  return `\n<h4 class="notion-heading-4">${html}</h4>\n\n`;
+}
+
 // Notionの「コールアウト」ブロックをMarkdownの引用（>）ではなく、独自のHTML（div.notion-callout）に変換する。
 // これにより、記事ページ側で「引用ブロック」と見た目を区別できるようにする（コールアウトは枠線・斜体なし）。
 function calloutToHtml(block: any): string {
@@ -166,22 +194,23 @@ function imageToHtml(block: any): string {
   if (type === 'file') src = image.file?.url ?? '';
   if (!src) return '';
 
-  const rawCaption: string = (image.caption ?? []).map((t: any) => t.plain_text).join('').trim();
+  const captionRichText: any[] = image.caption ?? [];
+  const rawCaption: string = captionRichText.map((t: any) => t.plain_text).join('').trim();
 
   let alt = '';
-  let visibleCaption: string | null = null;
+  let visibleCaptionHtml: string | null = null;
   const altOnlyMatch = rawCaption.match(/^alt[:：]\s*([\s\S]*)$/i);
   if (altOnlyMatch) {
     alt = altOnlyMatch[1].trim();
   } else if (rawCaption) {
     alt = rawCaption;
-    visibleCaption = rawCaption;
+    // キャプションの一部にリンクや太字などの書式が設定されている場合、それを保ったまま表示する。
+    visibleCaptionHtml = richTextToInlineHtml(captionRichText);
   }
 
   const imgTag = `<img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" loading="lazy" />`;
-  if (visibleCaption) {
-    const captionHtml = escapeHtml(visibleCaption).replace(/\n/g, '<br>\n');
-    return `\n<figure class="notion-figure">\n${imgTag}\n<figcaption>${captionHtml}</figcaption>\n</figure>\n\n`;
+  if (visibleCaptionHtml) {
+    return `\n<figure class="notion-figure">\n${imgTag}\n<figcaption>${visibleCaptionHtml}</figcaption>\n</figure>\n\n`;
   }
   return `\n<figure class="notion-figure">\n${imgTag}\n</figure>\n\n`;
 }
@@ -248,8 +277,9 @@ export async function getAllPosts(): Promise<Post[]> {
   }
 
   const n2m = new NotionToMarkdown({ notionClient: notion });
-  // コールアウト・画像ブロックは独自のHTML変換にする（詳細は各関数のコメントを参照）。
+  // 見出し4・コールアウト・画像ブロックは独自のHTML変換にする（詳細は各関数のコメントを参照）。
   // 引用（quote）ブロックはここで変換を上書きしないため、従来通りの見た目（枠線・斜体）のまま。
+  n2m.setCustomTransformer('heading_4', async (block: any) => heading4ToHtml(block));
   n2m.setCustomTransformer('callout', async (block: any) => calloutToHtml(block));
   n2m.setCustomTransformer('image', async (block: any) => imageToHtml(block));
   const posts: Post[] = [];
