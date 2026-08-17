@@ -46,6 +46,8 @@ export const PROP = {
 export type TocItem = {
   id: string;
   text: string;
+  // 見出し3（H3）は、直前の見出し2（H2）の下にネストして持たせる。
+  children: TocItem[];
 };
 
 export type Post = {
@@ -261,21 +263,44 @@ function getCustomText(prop: any): string | null {
   return trimmed || null;
 }
 
-// 本文のMarkdownをHTMLに変換すると同時に、見出し2（##）に自動でIDを振り、
-// 目次（見出しのリスト）を作る。目次はブログ記事ページのキービジュアル下に表示する。
+// 本文のMarkdownをHTMLに変換すると同時に、見出し2（##）・見出し3（###）に自動でIDを振り、
+// 目次（見出しのリスト。見出し3は見出し2の下にネスト）を作る。目次はブログ記事ページのキービジュアル下に表示する。
 function renderContentWithToc(markdown: string): { html: string; toc: TocItem[] } {
   const toc: TocItem[] = [];
-  let count = 0;
+  let h2Count = 0;
+  let h3Count = 0;
+  let orphanH3Count = 0;
+  let currentH2: TocItem | null = null;
   const renderer = new Renderer();
   renderer.heading = function (this: any, { tokens, depth }: any) {
     const inner = this.parser.parseInline(tokens);
+    const text = inner.replace(/<[^>]+>/g, '').trim();
+
     if (depth === 2) {
-      count += 1;
-      const id = `heading-${count}`;
-      const text = inner.replace(/<[^>]+>/g, '').trim();
-      toc.push({ id, text });
+      h2Count += 1;
+      h3Count = 0;
+      const id = `heading-${h2Count}`;
+      const item: TocItem = { id, text, children: [] };
+      toc.push(item);
+      currentH2 = item;
       return `<h2 id="${id}">${inner}</h2>\n`;
     }
+
+    if (depth === 3) {
+      let id: string;
+      if (currentH2) {
+        h3Count += 1;
+        id = `${currentH2.id}-${h3Count}`;
+        currentH2.children.push({ id, text, children: [] });
+      } else {
+        // 見出し2より前にいきなり見出し3が出てきた場合（想定外だが念のため）。
+        // 目次には載せず、本文側にはIDだけ振っておく。
+        orphanH3Count += 1;
+        id = `heading-3-${orphanH3Count}`;
+      }
+      return `<h3 id="${id}">${inner}</h3>\n`;
+    }
+
     return `<h${depth}>${inner}</h${depth}>\n`;
   };
   const html = marked.parse(markdown, { renderer }) as string;
