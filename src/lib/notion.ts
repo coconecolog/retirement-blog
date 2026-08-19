@@ -8,6 +8,7 @@ import { NotionToMarkdown } from 'notion-to-md';
 import { marked, Renderer } from 'marked';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { SITE } from './site.config';
 
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const NOTION_DATABASE_ID = process.env.NOTION_DATABASE_ID;
@@ -142,6 +143,25 @@ function escapeHtml(text: string): string {
     .replace(/"/g, '&quot;');
 }
 
+// リンク先がサイト外（他のドメイン）かどうかを判定する。
+// SITE.url（src/lib/site.config.ts）を基準にするため、独自ドメインを設定したときはそちらを
+// 変更するだけで、ここは自動的に正しく判定されるようになる（このファイルを直す必要はない）。
+function isExternalUrl(href: string): boolean {
+  try {
+    const target = new URL(href, SITE.url);
+    if (target.protocol !== 'http:' && target.protocol !== 'https:') return false;
+    const site = new URL(SITE.url);
+    return target.hostname !== site.hostname;
+  } catch {
+    return false;
+  }
+}
+
+// サイト外リンクにだけ target="_blank" を付ける（サイト内リンクは同じウィンドウで遷移させる）。
+function linkTargetAttrs(href: string): string {
+  return isExternalUrl(href) ? ' target="_blank" rel="noopener noreferrer"' : '';
+}
+
 // Notionのリッチテキスト配列（太字・リンクなどの書式付きテキスト）を、書式を保ったままインラインHTMLに変換する。
 // キャプションなどで「一部の文字だけにリンクが貼ってある」ケースでも、そのリンクを保持するために使う。
 function richTextToInlineHtml(richText: any[]): string {
@@ -156,7 +176,7 @@ function richTextToInlineHtml(richText: any[]): string {
       if (ann.strikethrough) html = `<s>${html}</s>`;
       if (ann.underline) html = `<u>${html}</u>`;
       const href: string | null = t.href ?? null;
-      if (href) html = `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${html}</a>`;
+      if (href) html = `<a href="${escapeHtml(href)}"${linkTargetAttrs(href)}>${html}</a>`;
       return html;
     })
     .join('');
@@ -358,6 +378,12 @@ function renderContentWithToc(markdown: string): { html: string; toc: TocItem[] 
     }
 
     return `<h${depth}>${inner}</h${depth}>\n`;
+  };
+  // 本文中の通常のリンクにも、サイト内/サイト外の判定を適用する（サイト外だけ新しいタブで開く）。
+  renderer.link = function (this: any, { href, title, tokens }: any) {
+    const text = this.parser.parseInline(tokens);
+    const titleAttr = title ? ` title="${escapeHtml(title)}"` : '';
+    return `<a href="${escapeHtml(href)}"${titleAttr}${linkTargetAttrs(href)}>${text}</a>`;
   };
   const html = marked.parse(markdown, { renderer }) as string;
   return { html, toc };
