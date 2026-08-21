@@ -42,6 +42,8 @@ export const PROP = {
   description: 'ディスクリプション',
   // 記事ページの「この記事でわかること」ボックスに表示する要点。空欄なら非表示。
   summary: '記事の要点',
+  // 「同じタグの記事」欄に何を並べるかを決めるための単一選択プロパティ。空欄ならその記事は関連記事欄の対象にならない。
+  mainTag: 'メインタグ',
 } as const;
 
 export type TocItem = {
@@ -64,6 +66,7 @@ export type Post = {
   excerpt: string;
   description: string;
   summary: string | null;
+  mainTag: string | null;
 };
 
 let cachedPosts: Post[] | null = null;
@@ -147,13 +150,27 @@ function escapeHtml(text: string): string {
 // SITE.url（src/lib/site.config.ts）を基準にするため、独自ドメインを設定したときはそちらを
 // 変更するだけで、ここは自動的に正しく判定されるようになる（このファイルを直す必要はない）。
 function isExternalUrl(href: string): boolean {
+  // まずhref単体を絶対URLとして解釈する（Notionのリンクはほぼ常に絶対URL）。
+  // SITE.urlの値が万一不正な形式でも、hrefさえ解釈できれば判定を続けられるようにする。
+  let target: URL;
   try {
-    const target = new URL(href, SITE.url);
-    if (target.protocol !== 'http:' && target.protocol !== 'https:') return false;
+    target = new URL(href);
+  } catch {
+    try {
+      target = new URL(href, SITE.url);
+    } catch {
+      return false;
+    }
+  }
+  if (target.protocol !== 'http:' && target.protocol !== 'https:') return false;
+
+  try {
     const site = new URL(SITE.url);
     return target.hostname !== site.hostname;
   } catch {
-    return false;
+    // SITE.urlが不正な形式で自サイトのホスト名がわからない場合は、
+    // 安全側として「サイト外」として扱う（新しいタブで開く）。
+    return true;
   }
 }
 
@@ -339,6 +356,11 @@ function getCustomText(prop: any): string | null {
   return trimmed || null;
 }
 
+// 「メインタグ」プロパティ（単一選択）の値を取得する。未設定なら null。
+function getSelectName(prop: any): string | null {
+  return prop?.select?.name ?? null;
+}
+
 // 本文のMarkdownをHTMLに変換すると同時に、見出し2（##）・見出し3（###）に自動でIDを振り、
 // 目次（見出しのリスト。見出し3は見出し2の下にネスト）を作る。目次はブログ記事ページのキービジュアル下に表示する。
 function renderContentWithToc(markdown: string): { html: string; toc: TocItem[] } {
@@ -471,6 +493,7 @@ export async function getAllPosts(): Promise<Post[]> {
       const excerpt = makeExcerpt(mdString);
       const customDescription = getCustomText(props[PROP.description]);
       const summary = getCustomText(props[PROP.summary]);
+      const mainTag = getSelectName(props[PROP.mainTag]);
 
       posts.push({
         id: page.id,
@@ -485,6 +508,7 @@ export async function getAllPosts(): Promise<Post[]> {
         excerpt,
         description: customDescription || excerpt,
         summary,
+        mainTag,
       });
     }
 
