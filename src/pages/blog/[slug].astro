@@ -7,12 +7,7 @@ import { SITE } from '../../lib/site.config';
 
 export async function getStaticPaths() {
   const posts = await getAllPosts();
-  return posts.map((post, index) => {
-    // 一覧は公開日が新しい順に並んでいるため、配列で1つ手前（index - 1）が「より新しい記事」、
-    // 1つ後ろ（index + 1）が「より古い記事」になる。「次の記事」＝新しい記事、「前の記事」＝古い記事、とする。
-    const newerPost = posts[index - 1] ?? null;
-    const olderPost = posts[index + 1] ?? null;
-
+  return posts.map((post) => {
     // 「メインタグ」が設定されている記事だけ、同じメインタグを持つ他の記事を関連記事として集める（自分は除く、最大6件）。
     const relatedPosts = post.mainTag
       ? posts.filter((p) => p.id !== post.id && p.mainTag === post.mainTag).slice(0, 6)
@@ -20,12 +15,12 @@ export async function getStaticPaths() {
 
     return {
       params: { slug: post.slug },
-      props: { post, newerPost, olderPost, relatedPosts },
+      props: { post, relatedPosts },
     };
   });
 }
 
-const { post, newerPost, olderPost, relatedPosts } = Astro.props as any;
+const { post, relatedPosts } = Astro.props as any;
 
 const articleJsonLd = {
   '@context': 'https://schema.org',
@@ -125,27 +120,6 @@ const breadcrumbJsonLd = {
     )}
 
     <div class="prose prose-neutral mt-10 max-w-none prose-headings:font-bold prose-h2:scroll-mt-28 prose-h3:scroll-mt-28 prose-a:text-[var(--color-brand)]" set:html={post.html} />
-
-    {(newerPost || olderPost) && (
-      <nav class="mt-12 grid gap-4 border-t border-[var(--color-border)] pt-8 sm:grid-cols-2" aria-label="次の記事・前の記事">
-        <div>
-          {olderPost && (
-            <a href={`/blog/${olderPost.slug}`} class="group flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 transition-shadow hover:shadow-lg hover:shadow-black/5">
-              <span class="text-xs font-medium text-[var(--color-ink-muted)]">← 前の記事</span>
-              <span class="mt-1 line-clamp-2 font-bold text-[var(--color-ink)] group-hover:text-[var(--color-brand)]">{olderPost.title}</span>
-            </a>
-          )}
-        </div>
-        <div>
-          {newerPost && (
-            <a href={`/blog/${newerPost.slug}`} class="group flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 text-right transition-shadow hover:shadow-lg hover:shadow-black/5 sm:items-end">
-              <span class="text-xs font-medium text-[var(--color-ink-muted)]">次の記事 →</span>
-              <span class="mt-1 line-clamp-2 font-bold text-[var(--color-ink)] group-hover:text-[var(--color-brand)]">{newerPost.title}</span>
-            </a>
-          )}
-        </div>
-      </nav>
-    )}
   </article>
 
   {relatedPosts.length > 0 && (
