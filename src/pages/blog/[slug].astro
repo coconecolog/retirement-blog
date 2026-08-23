@@ -129,6 +129,11 @@ const breadcrumbJsonLd = {
       <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {relatedPosts.map((related: any) => <PostCard post={related} />)}
       </div>
+      {post.mainTag && (
+        <div class="mt-10 text-center">
+          <a href={`/blog/tag/${encodeURIComponent(post.mainTag)}`} class="text-sm font-medium text-[var(--color-brand)] hover:underline">{post.mainTag}の記事一覧へ</a>
+        </div>
+      )}
     </div>
   )}
 
@@ -142,11 +147,9 @@ const breadcrumbJsonLd = {
           </a>
         ))}
       </div>
-      {post.mainTag && (
-        <div class="mt-10 text-center">
-          <a href={`/blog/tag/${encodeURIComponent(post.mainTag)}`} class="text-sm font-medium text-[var(--color-brand)] hover:underline">{post.mainTag}の記事一覧へ</a>
-        </div>
-      )}
+      <div class="mt-10 text-center">
+        <a href="/blog" class="text-sm font-medium text-[var(--color-brand)] hover:underline">ブログ一覧へ</a>
+      </div>
     </div>
   )}
 </BaseLayout>
