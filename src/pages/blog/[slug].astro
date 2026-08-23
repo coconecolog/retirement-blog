@@ -1,12 +1,13 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCard from '../../components/PostCard.astro';
-import { getAllPosts } from '../../lib/notion';
+import { getAllPosts, getAllTags } from '../../lib/notion';
 import { formatDate } from '../../lib/format';
 import { SITE } from '../../lib/site.config';
 
 export async function getStaticPaths() {
   const posts = await getAllPosts();
+  const tags = await getAllTags();
   return posts.map((post) => {
     // 「メインタグ」が設定されている記事だけ、同じメインタグを持つ他の記事を関連記事として集める（自分は除く、最大6件）。
     const relatedPosts = post.mainTag
@@ -15,12 +16,12 @@ export async function getStaticPaths() {
 
     return {
       params: { slug: post.slug },
-      props: { post, relatedPosts },
+      props: { post, relatedPosts, tags },
     };
   });
 }
 
-const { post, relatedPosts } = Astro.props as any;
+const { post, relatedPosts, tags } = Astro.props as any;
 
 const articleJsonLd = {
   '@context': 'https://schema.org',
@@ -127,6 +128,22 @@ const breadcrumbJsonLd = {
       <h2 class="mb-6 text-xl font-bold text-[var(--color-ink)]">{post.mainTag}の記事</h2>
       <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {relatedPosts.map((related: any) => <PostCard post={related} />)}
+      </div>
+      <div class="mt-10 text-center">
+        <a href="/blog" class="text-sm font-medium text-[var(--color-brand)] hover:underline">ブログ記事一覧へ</a>
+      </div>
+    </div>
+  )}
+
+  {tags.length > 0 && (
+    <div class="mx-auto max-w-5xl px-6 pb-16">
+      <h2 class="mb-4 text-sm font-semibold text-[var(--color-ink-muted)]">タグ一覧</h2>
+      <div class="flex flex-wrap gap-2">
+        {tags.map((tag: string) => (
+          <a href={`/blog/tag/${encodeURIComponent(tag)}`} class="rounded-full bg-[var(--color-brand-soft)] px-3 py-1 text-xs font-medium text-[var(--color-brand-dark)] hover:opacity-80">
+            {tag}
+          </a>
+        ))}
       </div>
     </div>
   )}
