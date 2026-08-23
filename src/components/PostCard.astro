@@ -13,7 +13,7 @@ const { post } = Astro.props;
   href={`/blog/${post.slug}`}
   class="group flex flex-col overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] transition-shadow hover:shadow-lg hover:shadow-black/5"
 >
-  <div class="aspect-[16/10] w-full overflow-hidden bg-[var(--color-brand-soft)]">
+  <div class="aspect-[16/9] w-full overflow-hidden bg-[var(--color-brand-soft)]">
     {post.thumbnail ? (
       <img
         src={post.thumbnail}
