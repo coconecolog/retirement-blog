@@ -2,7 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCard from '../../components/PostCard.astro';
 import BlogSidebar from '../../components/BlogSidebar.astro';
-import { getAllPosts, getAllTags, getAllMainTags } from '../../lib/notion';
+import { getAllPosts, getAllTags, getAllCategories } from '../../lib/notion';
 import { getPopularSlugsByPageviews } from '../../lib/analytics';
 import { formatDate } from '../../lib/format';
 import { SITE } from '../../lib/site.config';
@@ -10,7 +10,7 @@ import { SITE } from '../../lib/site.config';
 export async function getStaticPaths() {
   const posts = await getAllPosts();
   const tags = await getAllTags();
-  const categories = await getAllMainTags();
+  const categories = await getAllCategories();
 
   // GA4のページビュー数（直近28日）が多い順のスラッグ。取得できない場合は空配列（フォールバックは下で処理）。
   const popularSlugs = await getPopularSlugsByPageviews();

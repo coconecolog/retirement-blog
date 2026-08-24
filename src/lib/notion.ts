@@ -13,6 +13,16 @@ import { SITE } from './site.config';
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const NOTION_DATABASE_ID = process.env.NOTION_DATABASE_ID;
 
+// 「タグ」「メインタグ」はどちらもこのマスターDB（マスタータグ）へのリレーション。
+// 「カテゴリ」は別のマスターDB（マスターカテゴリ）へのリレーション。
+// どちらも記事側のプロパティはリレーションの「関連ページID」しか持たないため、
+// ここでマスターDB側を丸ごと取得してID→名前のマップを作り、突き合わせて名前を取得する。
+const MASTER_TAG_DATABASE_ID = '3c616da1dade80389f77e9c03497a0d8';
+const MASTER_CATEGORY_DATABASE_ID = '3c616da1dade80169c43e77f1ad6444b';
+// マスターDB側で、タグ名・カテゴリ名が入っているタイトル列の名前。
+const MASTER_TAG_TITLE_PROP = 'タグ';
+const MASTER_CATEGORY_TITLE_PROP = 'カテゴリ';
+
 // サムネイル画像の保存先。
 // 本来は public/ 配下に置きたいところだが、Astroはビルド開始時の早い段階で public/ の中身を
 // dist/ へコピーしてしまい、その後（getStaticPathsの実行中）に public/ へファイルを書き足しても
@@ -31,6 +41,7 @@ const EXT_BY_CONTENT_TYPE: Record<string, string> = {
 
 export const PROP = {
   title: 'タイトル',
+  // マスタータグDBへのリレーション（複数選択可）。
   tags: 'タグ',
   publishedAt: '公開日',
   updatedAt: '更新日',
@@ -42,8 +53,12 @@ export const PROP = {
   description: 'ディスクリプション',
   // 記事ページの「この記事でわかること」ボックスに表示する要点。空欄なら非表示。
   summary: '記事の要点',
-  // 「同じタグの記事」欄に何を並べるかを決めるための単一選択プロパティ。空欄ならその記事は関連記事欄の対象にならない。
+  // 「同じメインタグの記事」欄に何を並べるかを決めるプロパティ。マスタータグDBへのリレーション。
+  // 複数選択できてしまうが、従来通り「1記事につき1つ」の運用を前提に、先頭の1件だけを使う。
+  // 空欄ならその記事は関連記事欄の対象にならない。
   mainTag: 'メインタグ',
+  // サイドバーの「カテゴリ」欄に使う、マスターカテゴリDBへのリレーション（複数選択可）。
+  category: 'カテゴリ',
 } as const;
 
 export type TocItem = {
@@ -67,6 +82,7 @@ export type Post = {
   description: string;
   summary: string | null;
   mainTag: string | null;
+  categories: string[];
 };
 
 let cachedPosts: Post[] | null = null;
@@ -356,9 +372,45 @@ function getCustomText(prop: any): string | null {
   return trimmed || null;
 }
 
-// 「メインタグ」プロパティ（単一選択）の値を取得する。未設定なら null。
-function getSelectName(prop: any): string | null {
-  return prop?.select?.name ?? null;
+// マスターDB（マスタータグ／マスターカテゴリ）を丸ごと取得し、ページID→名前（タイトル列の値）の
+// マップを作る。記事側のリレーションプロパティは関連ページIDしか持たないため、
+// この対応表と突き合わせて初めて「タグ」「カテゴリ」の名前がわかる。
+async function fetchMasterNameMap(
+  notion: Client,
+  databaseId: string,
+  titlePropName: string
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  try {
+    const db: any = await notion.databases.retrieve({ database_id: databaseId });
+    const dataSourceId: string | undefined = db?.data_sources?.[0]?.id;
+    if (!dataSourceId) {
+      console.warn(`[notion] マスターDB（${databaseId}）のデータソースが見つかりませんでした。`);
+      return map;
+    }
+    let cursor: string | undefined = undefined;
+    do {
+      const res: any = await notion.dataSources.query({ data_source_id: dataSourceId, start_cursor: cursor });
+      for (const page of res.results as any[]) {
+        const name = getPlainTitle(page.properties?.[titlePropName]);
+        map.set(page.id, name);
+      }
+      cursor = res.has_more ? res.next_cursor ?? undefined : undefined;
+    } while (cursor);
+  } catch (err) {
+    console.warn(
+      `[notion] マスターDB（${databaseId}）の取得に失敗しました。Notionの連携（インテグレーション）がこのDBに共有されているか確認してください。`,
+      err
+    );
+  }
+  return map;
+}
+
+// リレーションプロパティ（関連ページIDの配列）を、マスターDBの対応表を使って名前の配列に変換する。
+// 対応表に見つからないID（マスターDB未共有・削除済みページなど）は黙ってスキップする。
+function getRelationNames(prop: any, nameMap: Map<string, string>): string[] {
+  const relations: any[] = prop?.relation ?? [];
+  return relations.map((r) => nameMap.get(r.id)).filter((name): name is string => !!name);
 }
 
 // 本文のMarkdownをHTMLに変換すると同時に、見出し2（##）・見出し3（###）に自動でIDを振り、
@@ -452,6 +504,12 @@ export async function getAllPosts(): Promise<Post[]> {
     return cachedPosts;
   }
 
+  // 「タグ」「メインタグ」「カテゴリ」の名前解決に使うマスターDBの対応表を先に作っておく。
+  const [tagNameMap, categoryNameMap] = await Promise.all([
+    fetchMasterNameMap(notion, MASTER_TAG_DATABASE_ID, MASTER_TAG_TITLE_PROP),
+    fetchMasterNameMap(notion, MASTER_CATEGORY_DATABASE_ID, MASTER_CATEGORY_TITLE_PROP),
+  ]);
+
   do {
     const res: any = await notion.dataSources.query({
       data_source_id: dataSourceId,
@@ -466,7 +524,7 @@ export async function getAllPosts(): Promise<Post[]> {
     for (const page of res.results as any[]) {
       const props = page.properties;
       const title = getPlainTitle(props[PROP.title]);
-      const tags: string[] = (props[PROP.tags]?.multi_select ?? []).map((t: any) => t.name);
+      const tags: string[] = getRelationNames(props[PROP.tags], tagNameMap);
       const publishedAt: string = props[PROP.publishedAt]?.date?.start ?? page.created_time;
       const updatedAt: string = props[PROP.updatedAt]?.date?.start ?? page.last_edited_time;
       const rawThumbnail = getThumbnail(props[PROP.thumbnail]);
@@ -493,7 +551,9 @@ export async function getAllPosts(): Promise<Post[]> {
       const excerpt = makeExcerpt(mdString);
       const customDescription = getCustomText(props[PROP.description]);
       const summary = getCustomText(props[PROP.summary]);
-      const mainTag = getSelectName(props[PROP.mainTag]);
+      // 「メインタグ」は複数選択できてしまうが、従来通り1記事につき1つの運用を前提に、先頭の1件だけを使う。
+      const mainTag = getRelationNames(props[PROP.mainTag], tagNameMap)[0] ?? null;
+      const categories: string[] = getRelationNames(props[PROP.category], categoryNameMap);
 
       posts.push({
         id: page.id,
@@ -509,6 +569,7 @@ export async function getAllPosts(): Promise<Post[]> {
         description: customDescription || excerpt,
         summary,
         mainTag,
+        categories,
       });
     }
 
@@ -526,10 +587,10 @@ export async function getAllTags(): Promise<string[]> {
   return Array.from(set).sort();
 }
 
-// 「メインタグ」が設定されている記事から、重複のない値の一覧を取得する（カテゴリ一覧・カテゴリ別ページ用）。
-export async function getAllMainTags(): Promise<string[]> {
+// 「カテゴリ」が設定されている記事から、重複のない値の一覧を取得する（サイドバーのカテゴリ一覧・カテゴリ別ページ用）。
+export async function getAllCategories(): Promise<string[]> {
   const posts = await getAllPosts();
   const set = new Set<string>();
-  for (const p of posts) if (p.mainTag) set.add(p.mainTag);
+  for (const p of posts) for (const c of p.categories) set.add(c);
   return Array.from(set).sort();
 }

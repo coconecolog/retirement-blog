@@ -2,15 +2,15 @@
 import BaseLayout from '../../../../layouts/BaseLayout.astro';
 import PostCard from '../../../../components/PostCard.astro';
 import Pagination from '../../../../components/Pagination.astro';
-import { getAllPosts, getAllMainTags } from '../../../../lib/notion';
+import { getAllPosts, getAllCategories } from '../../../../lib/notion';
 import { SITE } from '../../../../lib/site.config';
 
 export async function getStaticPaths({ paginate }: any) {
   const posts = await getAllPosts();
-  const categories = await getAllMainTags();
+  const categories = await getAllCategories();
 
   return categories.flatMap((category) => {
-    const filtered = posts.filter((p) => p.mainTag === category);
+    const filtered = posts.filter((p) => p.categories.includes(category));
     return paginate(filtered, {
       params: { category },
       pageSize: SITE.postsPerPage,
@@ -20,7 +20,7 @@ export async function getStaticPaths({ paginate }: any) {
 
 const { page } = Astro.props as any;
 const { category } = Astro.params;
-const categories = await getAllMainTags();
+const categories = await getAllCategories();
 ---
 
 <BaseLayout
