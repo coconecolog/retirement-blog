@@ -147,7 +147,7 @@ const breadcrumbJsonLd = {
   </div>
 
   {relatedPosts.length > 0 && (
-    <div class="mx-auto max-w-5xl px-6 pb-16">
+    <div class="mx-auto max-w-6xl px-6 pb-16">
       <h2 class="mb-6 text-xl font-bold text-[var(--color-ink)]">{post.mainTag}の記事</h2>
       <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {relatedPosts.map((related: any) => <PostCard post={related} />)}
@@ -155,7 +155,7 @@ const breadcrumbJsonLd = {
     </div>
   )}
 
-  <div class="mx-auto max-w-5xl px-6 pb-16 text-center">
+  <div class="mx-auto max-w-6xl px-6 pb-16 text-center">
     <a href="/blog" class="text-sm font-medium text-[var(--color-brand)] hover:underline">ブログ一覧へ</a>
   </div>
 </BaseLayout>

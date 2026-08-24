@@ -28,7 +28,7 @@ const categories = await getAllMainTags();
   description={`${SITE.title}の「${category}」カテゴリの記事一覧`}
   canonicalPath={page.currentPage === 1 ? `/blog/category/${category}` : `/blog/category/${category}/${page.currentPage}`}
 >
-  <div class="mx-auto max-w-5xl px-6 py-16">
+  <div class="mx-auto max-w-6xl px-6 py-16">
     <div class="mb-10">
       <h1 class="text-3xl font-bold text-[var(--color-ink)]">「{category}」の記事</h1>
     </div>

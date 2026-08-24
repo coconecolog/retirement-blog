@@ -29,7 +29,7 @@ const tags = await getAllTags();
   description={`${SITE.title}の「${tag}」タグが付いた記事一覧`}
   canonicalPath={page.currentPage === 1 ? `/blog/tag/${tag}` : `/blog/tag/${tag}/${page.currentPage}`}
 >
-  <div class="mx-auto max-w-5xl px-6 py-16">
+  <div class="mx-auto max-w-6xl px-6 py-16">
     <div class="mb-10">
       <h1 class="text-3xl font-bold text-[var(--color-ink)]">「{tag}」の記事</h1>
     </div>
