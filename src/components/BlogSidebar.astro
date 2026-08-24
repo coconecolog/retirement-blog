@@ -1,0 +1,57 @@
+---
+// 記事ページの右カラムに表示するサイドバー。
+// ・カテゴリ一覧（Notionの「メインタグ」の値を使う）
+// ・人気記事一覧（GA4のページビュー数をもとに取得。取れない場合は呼び出し側で最新記事にフォールバック）
+import type { Post } from '../lib/notion';
+
+export interface Props {
+  categories: string[];
+  popularPosts: Post[];
+}
+
+const { categories, popularPosts } = Astro.props;
+---
+
+<aside class="w-full lg:sticky lg:top-8 lg:w-72 lg:shrink-0">
+  {categories.length > 0 && (
+    <div class="mb-10">
+      <h2 class="text-lg font-bold text-[var(--color-ink)]">カテゴリ</h2>
+      <div class="mt-3 border-t border-[var(--color-border)]">
+        {categories.map((category) => (
+          <a
+            href={`/blog/category/${encodeURIComponent(category)}`}
+            class="flex items-center justify-between border-b border-[var(--color-border)] py-4 text-sm font-medium text-[var(--color-brand)] transition-colors hover:text-[var(--color-brand-dark)]"
+          >
+            <span>{category}</span>
+            <span class="text-[var(--color-ink-muted)]" aria-hidden="true">→</span>
+          </a>
+        ))}
+      </div>
+    </div>
+  )}
+
+  {popularPosts.length > 0 && (
+    <div>
+      <h2 class="text-lg font-bold text-[var(--color-ink)]">人気記事</h2>
+      <div class="mt-3 flex flex-col gap-4">
+        {popularPosts.map((post) => (
+          <a href={`/blog/${post.slug}`} class="group flex items-center gap-3">
+            <div class="aspect-[16/9] w-24 shrink-0 overflow-hidden rounded-lg bg-[var(--color-brand-soft)]">
+              {post.thumbnail && (
+                <img
+                  src={post.thumbnail}
+                  alt={post.title}
+                  loading="lazy"
+                  class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                />
+              )}
+            </div>
+            <p class="line-clamp-3 text-sm font-semibold leading-snug text-[var(--color-ink)] group-hover:text-[var(--color-brand)]">
+              {post.title}
+            </p>
+          </a>
+        ))}
+      </div>
+    </div>
+  )}
+</aside>
