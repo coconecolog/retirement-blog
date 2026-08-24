@@ -525,3 +525,11 @@ export async function getAllTags(): Promise<string[]> {
   for (const p of posts) for (const t of p.tags) set.add(t);
   return Array.from(set).sort();
 }
+
+// 「メインタグ」が設定されている記事から、重複のない値の一覧を取得する（カテゴリ一覧・カテゴリ別ページ用）。
+export async function getAllMainTags(): Promise<string[]> {
+  const posts = await getAllPosts();
+  const set = new Set<string>();
+  for (const p of posts) if (p.mainTag) set.add(p.mainTag);
+  return Array.from(set).sort();
+}
