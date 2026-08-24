@@ -1,10 +1,13 @@
 name: Build and Deploy to Cloudflare Pages
 
 on:
+  # 30分おきに自動実行し、Notionの更新をチェックして再ビルド・再公開します
   schedule:
     - cron: '*/30 * * * *'
+  # コードを push したときも実行
   push:
     branches: [main]
+  # GitHubの「Actions」タブから手動実行したいとき用
   workflow_dispatch: {}
 
 concurrency:
@@ -25,13 +28,18 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        # package.json に新しい依存パッケージ（@google-analytics/data）を追加した際、
+        # package-lock.json を手元で更新して渡す運用が難しい（巨大ファイルのためGitHub上での貼り付けにリスクがある）ので、
+        # ロックファイルとの厳密な一致を要求する npm ci ではなく npm install を使う。
+        run: npm install
 
       - name: Build site (Notionから最新記事を取得)
         run: npm run build
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
           NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+          GA4_PROPERTY_ID: ${{ secrets.GA4_PROPERTY_ID }}
+          GA4_SERVICE_ACCOUNT_KEY: ${{ secrets.GA4_SERVICE_ACCOUNT_KEY }}
           PUBLIC_GA_MEASUREMENT_ID: ${{ secrets.PUBLIC_GA_MEASUREMENT_ID }}
           PUBLIC_CLARITY_PROJECT_ID: ${{ secrets.PUBLIC_CLARITY_PROJECT_ID }}
           PUBLIC_GOOGLE_SITE_VERIFICATION: ${{ secrets.PUBLIC_GOOGLE_SITE_VERIFICATION }}
