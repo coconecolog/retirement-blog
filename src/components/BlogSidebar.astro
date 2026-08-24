@@ -18,10 +18,7 @@ const { categories, popularPosts } = Astro.props;
       <h2 class="text-lg font-bold text-[var(--color-ink)]">カテゴリ</h2>
       <div class="mt-3 border-t border-[var(--color-border)]">
         {categories.map((category) => (
-          <a
-            href={`/blog/category/${encodeURIComponent(category)}`}
-            class="flex items-center justify-between border-b border-[var(--color-border)] py-4 text-sm font-medium text-[var(--color-brand)] transition-colors hover:text-[var(--color-brand-dark)]"
-          >
+          <a href={`/blog/category/${encodeURIComponent(category)}`} class="flex items-center justify-between border-b border-[var(--color-border)] py-4 text-sm font-medium text-[var(--color-brand)] transition-colors hover:text-[var(--color-brand-dark)]">
             <span>{category}</span>
             <span class="text-[var(--color-ink-muted)]" aria-hidden="true">→</span>
           </a>
