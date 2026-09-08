@@ -1,17 +1,151 @@
 ---
-import { SITE } from '../lib/site.config';
+import { NAV_LINKS, SITE_NAME } from "@/consts";
+
+const currentPath = Astro.url.pathname;
+function isActive(href: string) {
+  if (href === "/") return currentPath === "/";
+  return currentPath.startsWith(href);
+}
 ---
 
-<header class="sticky top-4 z-50 mt-4 px-6">
-  <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 rounded-2xl border border-black/5 bg-white/40 px-6 py-3 shadow-[0_8px_30px_-12px_rgba(0,0,0,0.15)] backdrop-blur-xl">
-    <a href="/" class="shrink-0 text-base font-bold tracking-tight text-[var(--color-ink)]">
-      {SITE.title}
+<header class="sticky top-0 z-40 border-b border-neutral-100 bg-white/90 backdrop-blur">
+  <div class="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
+    <a href="/" class="text-lg font-extrabold tracking-tight text-ink-950">
+      {SITE_NAME}
     </a>
-    
-      <a href="/blog"
-      class="shrink-0 rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-    >
-      記事を読む
-    </a>
+
+    <nav class="hidden items-center gap-1 md:flex">
+      {
+        NAV_LINKS.map((link) =>
+          link.children.length > 0 ? (
+            <div class="nav-dropdown relative">
+              <div
+                class={`flex items-center gap-0.5 rounded-full pl-4 pr-1.5 py-1 text-sm font-medium transition-colors ${
+                  isActive(link.href)
+                    ? "bg-brand-50 text-brand-700"
+                    : "text-neutral-600 hover:bg-neutral-50 hover:text-ink-950"
+                }`}
+              >
+                <a href={link.href} class="py-1">{link.label}</a>
+                <button
+                  type="button"
+                  class="nav-dropdown-toggle flex h-7 w-7 shrink-0 items-center justify-center rounded-full hover:bg-black/5"
+                  aria-label={`${link.label}のサブメニューを開く`}
+                  aria-expanded="false"
+                >
+                  <svg
+                    class="nav-dropdown-chevron h-3 w-3 shrink-0 transition-transform"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    aria-hidden="true"
+                  >
+                    <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </button>
+              </div>
+              <div class="nav-dropdown-panel absolute left-1/2 top-full z-50 mt-2 hidden w-80 -translate-x-1/2 rounded-2xl border border-neutral-100 bg-white p-2 shadow-lg">
+                {link.children.map((child) => (
+                  <a href={child.href} class="flex items-start gap-3 rounded-xl px-3 py-2.5 hover:bg-neutral-50">
+                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-100 text-base">
+                      {child.icon}
+                    </span>
+                    <span class="min-w-0">
+                      <span class="block text-sm font-bold text-ink-950">{child.label}</span>
+                      <span class="block text-xs text-neutral-500">{child.description}</span>
+                    </span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <a href={link.href}
+              class={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                isActive(link.href)
+                  ? "bg-brand-50 text-brand-700"
+                  : "text-neutral-600 hover:bg-neutral-50 hover:text-ink-950"
+              }`}
+            >
+              {link.label}
+            </a>
+          ),
+        )
+      }
+    </nav>
+
+    <details class="relative md:hidden">
+      <summary class="list-none rounded-full border border-neutral-200 px-3 py-1.5 text-sm font-medium text-ink-950 [&::-webkit-details-marker]:hidden">
+        メニュー
+      </summary>
+      <nav class="absolute right-0 mt-2 w-64 rounded-2xl border border-neutral-100 bg-white p-2 shadow-lg">
+        {
+          NAV_LINKS.map((link) => (
+            <>
+              <a href={link.href} class="block rounded-xl px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50">
+                {link.label}
+              </a>
+              {link.children.length > 0 && (
+                <div class="ml-3 border-l border-neutral-100 pl-2">
+                  {link.children.map((child) => (
+                    <a href={child.href} class="block rounded-xl px-3 py-2 text-xs text-neutral-500 hover:bg-neutral-50">
+                      {child.label}
+                    </a>
+                  ))}
+                </div>
+              )}
+            </>
+          ))
+        }
+      </nav>
+    </details>
   </div>
 </header>
+
+<script>
+  // ヘッダーの「便利ツール」等、子メニューを持つナビ項目のドロップダウン制御。
+  // ラベル部分（<a>）はクリックでそのページへ遷移し、右側の矢印ボタンのみが開閉を担当する。
+  const dropdowns = Array.from(document.querySelectorAll<HTMLElement>(".nav-dropdown"));
+
+  function closeDropdown(dropdown: HTMLElement) {
+    const panel = dropdown.querySelector<HTMLElement>(".nav-dropdown-panel");
+    const toggle = dropdown.querySelector<HTMLButtonElement>(".nav-dropdown-toggle");
+    const chevron = dropdown.querySelector<SVGElement>(".nav-dropdown-chevron");
+    panel?.classList.add("hidden");
+    toggle?.setAttribute("aria-expanded", "false");
+    chevron?.classList.remove("rotate-180");
+  }
+
+  function closeAll(except?: HTMLElement) {
+    dropdowns.forEach((dropdown) => {
+      if (dropdown !== except) closeDropdown(dropdown);
+    });
+  }
+
+  dropdowns.forEach((dropdown) => {
+    const toggle = dropdown.querySelector<HTMLButtonElement>(".nav-dropdown-toggle");
+    const panel = dropdown.querySelector<HTMLElement>(".nav-dropdown-panel");
+    const chevron = dropdown.querySelector<SVGElement>(".nav-dropdown-chevron");
+
+    toggle?.addEventListener("click", () => {
+      const isOpen = !panel?.classList.contains("hidden");
+      closeAll(dropdown);
+      if (isOpen) {
+        closeDropdown(dropdown);
+      } else {
+        panel?.classList.remove("hidden");
+        toggle.setAttribute("aria-expanded", "true");
+        chevron?.classList.add("rotate-180");
+      }
+    });
+  });
+
+  document.addEventListener("click", (e) => {
+    const target = e.target as Node;
+    dropdowns.forEach((dropdown) => {
+      if (!dropdown.contains(target)) closeDropdown(dropdown);
+    });
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeAll();
+  });
+</script>

@@ -1,0 +1,292 @@
+---
+// Notionのブロック配列を再帰的にHTMLへレンダリングするコンポーネント。
+// 自分自身をインポートして再帰的に呼び出しています（Astroの標準的な再帰コンポーネントの書き方）。
+import type { BlockNode } from "@/lib/types";
+import RichText from "./RichText.astro";
+import NotionBlocksSelf from "./NotionBlocks.astro";
+import { SITE_URL } from "@/consts";
+
+interface Props {
+  blocks: BlockNode[] | undefined;
+}
+
+const { blocks = [] } = Astro.props;
+
+// サイト内（自ドメイン）へのリンクかどうかを判定。ブックマーク埋め込みが自サイトの記事/資料を指している場合、
+// 新規タブではなく画面遷移にする（RichText.astroの同名関数と同じロジック）。
+function isInternalHref(href: string): boolean {
+  if (href.startsWith("/") || href.startsWith("#")) return true;
+  try {
+    return new URL(href, SITE_URL).origin === new URL(SITE_URL).origin;
+  } catch {
+    return false;
+  }
+}
+
+type ListKind = "bulleted" | "numbered" | "todo";
+type Group = { kind: "list"; listType: ListKind; items: BlockNode[] } | { kind: "single"; block: BlockNode };
+
+function listKindOf(type: string): ListKind | null {
+  if (type === "bulleted_list_item") return "bulleted";
+  if (type === "numbered_list_item") return "numbered";
+  if (type === "to_do") return "todo";
+  return null;
+}
+
+function groupBlocks(nodes: BlockNode[]): Group[] {
+  const groups: Group[] = [];
+  for (const node of nodes) {
+    const kind = listKindOf(node.type);
+    const last = groups[groups.length - 1];
+    if (kind && last?.kind === "list" && last.listType === kind) {
+      last.items.push(node);
+    } else if (kind) {
+      groups.push({ kind: "list", listType: kind, items: [node] });
+    } else {
+      groups.push({ kind: "single", block: node });
+    }
+  }
+  return groups;
+}
+
+const groups = groupBlocks(blocks);
+---
+
+{
+  groups.map((group) => {
+    if (group.kind === "list") {
+      if (group.listType === "bulleted") {
+        return (
+          <ul>
+            {group.items.map((item) => (
+              <li>
+                <RichText items={item.richText} />
+                {item.children && item.children.length > 0 && <NotionBlocksSelf blocks={item.children} />}
+              </li>
+            ))}
+          </ul>
+        );
+      }
+      if (group.listType === "numbered") {
+        return (
+          <ol>
+            {group.items.map((item) => (
+              <li>
+                <RichText items={item.richText} />
+                {item.children && item.children.length > 0 && <NotionBlocksSelf blocks={item.children} />}
+              </li>
+            ))}
+          </ol>
+        );
+      }
+      return (
+        <ul class="list-none space-y-2 pl-0">
+          {group.items.map((item) => (
+            <li class="flex items-start gap-2.5">
+              <input
+                type="checkbox"
+                checked={item.checked}
+                disabled
+                class="mt-1.5 h-4 w-4 shrink-0 rounded border-neutral-300 text-brand-600"
+              />
+              <span class={item.checked ? "text-neutral-400 line-through" : ""}>
+                <RichText items={item.richText} />
+              </span>
+            </li>
+          ))}
+        </ul>
+      );
+    }
+
+    const block = group.block;
+
+    switch (block.type) {
+      case "heading_1":
+        return (
+          <h1 id={block.anchor} class="scroll-mt-24 text-3xl font-bold tracking-tight text-ink-950">
+            <RichText items={block.richText} />
+          </h1>
+        );
+      case "heading_2":
+        return (
+          <h2 id={block.anchor}>
+            <RichText items={block.richText} />
+          </h2>
+        );
+      case "heading_3":
+        return (
+          <h3 id={block.anchor}>
+            <RichText items={block.richText} />
+          </h3>
+        );
+      case "heading_4":
+        return (
+          <h4 id={block.anchor}>
+            <RichText items={block.richText} />
+          </h4>
+        );
+
+      case "paragraph":
+        return (
+          <p>
+            <RichText items={block.richText} />
+          </p>
+        );
+
+      case "toggle":
+        return (
+          <details class="rounded-xl border border-neutral-200 p-4 open:pb-4">
+            <summary class="cursor-pointer font-semibold text-ink-950 marker:text-brand-500">
+              <RichText items={block.richText} />
+            </summary>
+            <div class="prose-notion mt-3">
+              {block.children && <NotionBlocksSelf blocks={block.children} />}
+            </div>
+          </details>
+        );
+
+      case "callout":
+        // コールアウト: 枠線・斜体なしの背景ボックス（引用ブロックとは見た目を区別する）
+        return (
+          <div class="flex gap-3 rounded-xl bg-brand-50 p-4 not-italic">
+            {block.emoji && <span class="text-xl leading-none">{block.emoji}</span>}
+            <div class="min-w-0 flex-1 [&>p]:m-0">
+              <RichText items={block.richText} />
+              {block.children && block.children.length > 0 && (
+                <div class="mt-2">
+                  <NotionBlocksSelf blocks={block.children} />
+                </div>
+              )}
+            </div>
+          </div>
+        );
+
+      case "quote":
+        // 引用: 枠線＋斜体（コールアウトとは見た目を区別する）
+        return (
+          <blockquote class="border-l-4 border-brand-300 pl-4 italic text-neutral-700">
+            <RichText items={block.richText} />
+            {block.children && block.children.length > 0 && <NotionBlocksSelf blocks={block.children} />}
+          </blockquote>
+        );
+
+      case "divider":
+        return <hr />;
+
+      case "code":
+        return (
+          <div>
+            <pre>
+              <code>{(block.richText || []).map((r) => r.text).join("")}</code>
+            </pre>
+            {block.language && (
+              <p class="mt-1 text-right text-xs text-neutral-400">{block.language}</p>
+            )}
+          </div>
+        );
+
+      case "image":
+        return (
+          <figure class="my-6">
+            <img src={block.src} alt={block.alt || ""} loading="lazy" decoding="async" class="w-full" />
+            {block.visibleCaption && (
+              <figcaption class="mt-2 text-center text-sm text-neutral-500">{block.visibleCaption}</figcaption>
+            )}
+          </figure>
+        );
+
+      case "table": {
+        const rows = block.rows || [];
+        const headerRow = block.hasColumnHeader ? rows[0] : null;
+        const bodyRows = block.hasColumnHeader ? rows.slice(1) : rows;
+        return (
+          <div class="overflow-x-auto rounded-xl border border-neutral-200">
+            <table>
+              {headerRow && (
+                <thead>
+                  <tr class="bg-neutral-50">
+                    {headerRow.cells.map((cell) => (
+                      <th scope="col" class="border-b border-neutral-200 p-3 text-left align-top font-semibold">
+                        <RichText items={cell} />
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+              )}
+              <tbody>
+                {bodyRows.map((row) => (
+                  <tr class="border-b border-neutral-100 last:border-0">
+                    {row.cells.map((cell, cellIndex) =>
+                      block.hasRowHeader && cellIndex === 0 ? (
+                        <th scope="row" class="bg-neutral-50 p-3 text-left align-top font-semibold">
+                          <RichText items={cell} />
+                        </th>
+                      ) : (
+                        <td class="p-3 align-top">
+                          <RichText items={cell} />
+                        </td>
+                      ),
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      }
+
+      case "bookmark":
+      case "link_preview": {
+        const externalAttrs = isInternalHref(block.url) ? {} : { target: "_blank", rel: "noopener noreferrer" };
+        return (
+          <a href={block.url} class="block rounded-xl border border-neutral-200 p-4 no-underline hover:border-brand-300" {...externalAttrs}>
+            <span class="block truncate text-sm text-neutral-500">{block.url}</span>
+            {block.caption && <span class="mt-1 block font-medium text-ink-950">{block.caption}</span>}
+          </a>
+        );
+      }
+
+      case "embed":
+        return (
+          <div class="aspect-video w-full overflow-hidden rounded-xl">
+            <iframe src={block.url} class="h-full w-full" loading="lazy" allowfullscreen />
+          </div>
+        );
+
+      case "video":
+        return (
+          <video controls class="w-full rounded-xl">
+            <source src={block.url} />
+          </video>
+        );
+
+      case "audio":
+        return <audio controls src={block.url} class="w-full" />;
+
+      case "file":
+      case "pdf":
+        return (
+          <a href={block.url} target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 rounded-xl border border-neutral-200 px-4 py-2 no-underline hover:border-brand-300">
+            <span>📎</span>
+            <span>{block.name}</span>
+          </a>
+        );
+
+      case "equation":
+        return <div class="rounded-xl bg-neutral-50 p-3 font-mono text-sm">{block.expression}</div>;
+
+      case "column_list":
+        return (
+          <div class="grid gap-6" style={`grid-template-columns: repeat(${block.children?.length || 1}, minmax(0, 1fr))`}>
+            {block.children && <NotionBlocksSelf blocks={block.children} />}
+          </div>
+        );
+
+      case "column":
+        return <div>{block.children && <NotionBlocksSelf blocks={block.children} />}</div>;
+
+      default:
+        return null;
+    }
+  })
+}

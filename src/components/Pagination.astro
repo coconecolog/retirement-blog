@@ -1,23 +1,54 @@
 ---
-export interface Props {
-  currentPage: number;
-  lastPage: number;
-  basePath: string; // 例: "/blog" または "/blog/tag/投資"
+import type { Page } from "astro";
+
+interface Props {
+  page: Page<unknown>;
+  basePath: string; // 例: "/blog" や "/blog/tag/施策"
 }
 
-const { currentPage, lastPage, basePath } = Astro.props;
-const prevHref = currentPage > 1 ? (currentPage - 1 === 1 ? basePath : `${basePath}/${currentPage - 1}`) : null;
-const nextHref = currentPage < lastPage ? `${basePath}/${currentPage + 1}` : null;
+const { page, basePath } = Astro.props;
+
+function pageUrl(n: number): string {
+  return n <= 1 ? basePath : `${basePath}/${n}`;
+}
+
+const pages = Array.from({ length: page.lastPage }, (_, i) => i + 1);
 ---
 
-{lastPage > 1 && (
-  <nav class="mt-12 flex items-center justify-between border-t border-[var(--color-border)] pt-6">
-    {prevHref ? (
-      <a href={prevHref} class="text-sm font-medium text-[var(--color-brand)] hover:underline">← 前のページ</a>
-    ) : <span></span>}
-    <span class="text-sm text-[var(--color-ink-muted)]">{currentPage} / {lastPage}</span>
-    {nextHref ? (
-      <a href={nextHref} class="text-sm font-medium text-[var(--color-brand)] hover:underline">次のページ →</a>
-    ) : <span></span>}
-  </nav>
-)}
+{
+  page.lastPage > 1 && (
+    <nav aria-label="ページネーション" class="mt-12 flex items-center justify-center gap-2">
+      {page.url.prev ? (
+        <a href={page.url.prev} class="rounded-full border border-neutral-200 px-4 py-2 text-sm font-medium text-neutral-600 hover:border-brand-300 hover:text-brand-700">
+          前へ
+        </a>
+      ) : (
+        <span class="rounded-full border border-neutral-100 px-4 py-2 text-sm font-medium text-neutral-300">前へ</span>
+      )}
+
+      <ul class="flex items-center gap-1">
+        {pages.map((n) => (
+          <li>
+            <a
+              href={pageUrl(n)}
+              aria-current={n === page.currentPage ? "page" : undefined}
+              class={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-medium ${
+                n === page.currentPage ? "bg-brand-600 text-white" : "text-neutral-600 hover:bg-neutral-50"
+              }`}
+            >
+              {n}
+            </a>
+          </li>
+        ))}
+      </ul>
+
+      {page.url.next ? (
+        <a href={page.url.next} class="rounded-full border border-neutral-200 px-4 py-2 text-sm font-medium text-neutral-600 hover:border-brand-300 hover:text-brand-700">
+          次へ
+        </a>
+      ) : (
+        <span class="rounded-full border border-neutral-100 px-4 py-2 text-sm font-medium text-neutral-300">次へ</span>
+      )}
+    </nav>
+  )
+}

@@ -1,0 +1,27 @@
+---
+// トップページと共通の「お問い合わせ」CTAブロック。他ページでも再利用する。
+// heading/descriptionは呼び出し側で文言を変えられるように任意指定可（未指定ならトップページと同じ文言）。
+interface Props {
+  heading?: string;
+  description?: string;
+}
+
+const {
+  heading = "自社のマーケティング体制について相談したい方へ",
+  description = "現状の課題整理から施策の優先順位づけまで、まずはお気軽にご相談ください。",
+} = Astro.props;
+---
+
+<section class="py-20">
+  <div class="mx-auto max-w-3xl px-5 text-center">
+    <h2 class="text-2xl font-bold tracking-tight text-ink-950 md:text-3xl">
+      {heading}
+    </h2>
+    <p class="mt-4 text-neutral-500">
+      {description}
+    </p>
+    <a href="/contact" class="mt-8 inline-block rounded-full bg-brand-600 px-8 py-3 text-sm font-bold text-white hover:bg-brand-700">
+      お問い合わせはこちら
+    </a>
+  </div>
+</section>

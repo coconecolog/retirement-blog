@@ -1,0 +1,43 @@
+---
+import { SITE_NAME, GSC_VERIFICATION } from "@/consts";
+
+interface Props {
+  title: string;
+  description: string;
+  ogImage?: string;
+  noindex?: boolean;
+  jsonLd?: object | object[];
+}
+
+const { title, description, ogImage, noindex = false, jsonLd } = Astro.props;
+
+const pageTitle = title === SITE_NAME ? title : `${title} | ${SITE_NAME}`;
+const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+const resolvedOgImage = ogImage ? new URL(ogImage, Astro.site).toString() : undefined;
+const jsonLdList = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
+---
+
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<title>{pageTitle}</title>
+<meta name="description" content={description} />
+<link rel="canonical" href={canonicalURL} />
+{noindex && <meta name="robots" content="noindex, nofollow" />}
+{GSC_VERIFICATION && <meta name="google-site-verification" content={GSC_VERIFICATION} />}
+
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content={SITE_NAME} />
+<meta property="og:title" content={pageTitle} />
+<meta property="og:description" content={description} />
+<meta property="og:url" content={canonicalURL} />
+{resolvedOgImage && <meta property="og:image" content={resolvedOgImage} />}
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={pageTitle} />
+<meta name="twitter:description" content={description} />
+{resolvedOgImage && <meta name="twitter:image" content={resolvedOgImage} />}
+
+<link rel="alternate" type="application/rss+xml" title={`${SITE_NAME} RSS`} href="/rss.xml" />
+
+{jsonLdList.map((data) => <script type="application/ld+json" is:inline set:html={JSON.stringify(data)} />)}

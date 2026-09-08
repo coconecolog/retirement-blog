@@ -1,20 +1,33 @@
 ---
-import { SITE } from '../lib/site.config';
+// フッターのリンクは手動で分類して表示している（NAV_LINKSのフラット表示はしていない）。
+// 色はすべて src/styles/global.css の brand-* トークン経由（デザインレギュレーション準拠。hexのハードコード禁止）。
+import { SITE_NAME, SITE_TAGLINE } from "@/consts";
 const year = new Date().getFullYear();
 ---
 
-<footer class="border-t border-[var(--color-border)] bg-[var(--color-surface)]">
-  <div class="mx-auto max-w-6xl px-6 py-12 text-sm text-[var(--color-ink-muted)]">
-    <div class="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-      <p class="font-semibold text-[var(--color-ink)]"><a href="/" class="hover:text-[var(--color-brand)]">{SITE.title}</a></p>
-      <nav class="flex flex-wrap gap-5">
-        <a href="/" class="hover:text-[var(--color-brand)]">トップ</a>
-        <a href="/blog" class="hover:text-[var(--color-brand)]">ブログ</a>
-        <a href="/about" class="hover:text-[var(--color-brand)]">ABOUT</a>
-        <a href="/privacy" class="hover:text-[var(--color-brand)]">個人情報の取り扱いについて</a>
-        <a href="/rss.xml" class="hover:text-[var(--color-brand)]">RSS</a>
-      </nav>
+<footer class="bg-brand-900">
+  <div class="mx-auto max-w-6xl px-5 pb-7 pt-14">
+    <div class="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-3 sm:gap-x-8">
+      <div class="col-span-2 sm:col-span-1">
+        <p class="text-lg font-extrabold tracking-tight text-white">{SITE_NAME}</p>
+        <p class="mt-2 max-w-[26ch] text-sm leading-relaxed text-brand-300">{SITE_TAGLINE}</p>
+      </div>
+      <div>
+        <h3 class="text-xs font-bold uppercase tracking-wider text-brand-400">サイト</h3>
+        <ul class="mt-4 space-y-2.5">
+          <li><a href="/" class="text-sm text-brand-100 hover:text-white">トップ</a></li>
+          <li><a href="/blog" class="text-sm text-brand-100 hover:text-white">ブログ</a></li>
+          <li><a href="/search" class="text-sm text-brand-100 hover:text-white">サイト内検索</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="text-xs font-bold uppercase tracking-wider text-brand-400">{SITE_NAME}について</h3>
+        <ul class="mt-4 space-y-2.5">
+          <li><a href="/contact" class="text-sm text-brand-100 hover:text-white">お問い合わせ</a></li>
+          <li><a href="/privacy" class="text-sm text-brand-100 hover:text-white">個人情報保護方針</a></li>
+        </ul>
+      </div>
     </div>
-    <p class="mt-8 text-xs text-[var(--color-ink-muted)]">© {year} {SITE.title}. All rights reserved.</p>
+    <p class="mt-10 border-t border-brand-800 pt-5 text-xs text-brand-400">© {year} {SITE_NAME}. All rights reserved.</p>
   </div>
 </footer>

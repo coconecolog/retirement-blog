@@ -1,0 +1,61 @@
+---
+import type { RichTextItem } from "@/lib/types";
+import { notionColorToStyle } from "@/lib/colors";
+import { SITE_URL } from "@/consts";
+
+interface Props {
+  items: RichTextItem[] | undefined;
+}
+
+const { items = [] } = Astro.props;
+
+function classesFor(item: RichTextItem): string {
+  const classes: string[] = [];
+  if (item.bold) classes.push("font-bold");
+  if (item.italic) classes.push("italic");
+  if (item.strikethrough) classes.push("line-through");
+  if (item.underline) classes.push("underline");
+  if (item.code) classes.push("rounded bg-neutral-100 px-1.5 py-0.5 font-mono text-[0.9em] text-brand-700");
+  return classes.join(" ");
+}
+
+// サイト内（自ドメイン）へのリンクかどうかを判定。
+// Notion側ではhttps://から始まる絶対URLでしか記事内リンクを作れないため、
+// 「https://自分のサイトURL/...」で始まるリンクは内部リンクとみなし、新規タブではなく画面遷移にする。
+function isInternalHref(href: string): boolean {
+  if (href.startsWith("/") || href.startsWith("#")) return true;
+  try {
+    return new URL(href, SITE_URL).origin === new URL(SITE_URL).origin;
+  } catch {
+    return false;
+  }
+}
+---
+
+{
+  items.map((item) => {
+    const lines = item.text.split("\n");
+    const cls = classesFor(item);
+    const style = notionColorToStyle(item.color);
+    const externalAttrs = item.href && !isInternalHref(item.href) ? { target: "_blank", rel: "noopener noreferrer" } : {};
+    return item.href ? (
+      <a href={item.href} class={cls || undefined} style={style} {...externalAttrs}>
+        {lines.map((line, i) => (
+          <Fragment>
+            {i > 0 && <br />}
+            {line}
+          </Fragment>
+        ))}
+      </a>
+    ) : (
+      <span class={cls || undefined} style={style}>
+        {lines.map((line, i) => (
+          <Fragment>
+            {i > 0 && <br />}
+            {line}
+          </Fragment>
+        ))}
+      </span>
+    );
+  })
+}

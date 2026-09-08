@@ -1,35 +1,40 @@
 ---
-export interface Props {
-  tags: string[];
+// タグ絞り込み。静的サイトなのでJSでフィルタするのではなく、
+// タグごとに実際のページ（/blog/tag/xxx）へのリンクにしている（SEO・キャッシュの面でも有利）。
+import { toRouteSlug } from "@/lib/routeSlug";
+
+interface Props {
+  tags: { name: string; count: number }[];
   activeTag?: string;
 }
 
 const { tags, activeTag } = Astro.props;
 ---
 
-{tags.length > 0 && (
-  <div class="flex flex-wrap gap-2">
-    
-      <a href="/blog"
-      class={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
-        !activeTag
-          ? 'border-[var(--color-brand)] bg-[var(--color-brand)] text-white'
-          : 'border-[var(--color-border)] text-[var(--color-ink-muted)] hover:border-[var(--color-brand)] hover:text-[var(--color-brand)]'
-      }`}
-    >
-      すべて
-    </a>
-    {tags.map((tag) => (
-      
-        <a href={`/blog/tag/${encodeURIComponent(tag)}`}
+<div class="flex flex-wrap gap-2">
+  <a
+    href="/blog"
+    class={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
+      !activeTag
+        ? "border-brand-600 bg-brand-600 text-white"
+        : "border-neutral-200 text-neutral-600 hover:border-brand-300 hover:text-brand-700"
+    }`}
+  >
+    すべて
+  </a>
+  {
+    tags.map((tag) => (
+      <a
+        href={`/blog/tag/${encodeURIComponent(toRouteSlug(tag.name))}`}
         class={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
-          activeTag === tag
-            ? 'border-[var(--color-brand)] bg-[var(--color-brand)] text-white'
-            : 'border-[var(--color-border)] text-[var(--color-ink-muted)] hover:border-[var(--color-brand)] hover:text-[var(--color-brand)]'
+          activeTag === tag.name
+            ? "border-brand-600 bg-brand-600 text-white"
+            : "border-neutral-200 text-neutral-600 hover:border-brand-300 hover:text-brand-700"
         }`}
       >
-        {tag}
+        {tag.name}
+        <span class={activeTag === tag.name ? "ml-1 text-white/70" : "ml-1 text-neutral-400"}>{tag.count}</span>
       </a>
-    ))}
-  </div>
-)}
+    ))
+  }
+</div>

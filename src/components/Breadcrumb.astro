@@ -1,0 +1,31 @@
+---
+import { buildBreadcrumbList, type BreadcrumbEntry } from "@/lib/schema";
+
+interface Props {
+  items: BreadcrumbEntry[];
+}
+
+const { items } = Astro.props;
+const jsonLd = buildBreadcrumbList(items);
+---
+
+<script type="application/ld+json" is:inline set:html={JSON.stringify(jsonLd)} />
+
+<nav aria-label="パンくずリスト" class="mx-auto max-w-6xl px-5 pt-6 text-sm text-neutral-500">
+  <ol class="flex flex-wrap items-center gap-1.5">
+    {
+      items.map((item, i) => (
+        <li class="flex items-center gap-1.5">
+          {i > 0 && <span class="text-neutral-300">/</span>}
+          {i === items.length - 1 ? (
+            <span class="text-neutral-700">{item.name}</span>
+          ) : (
+            <a href={item.href} class="hover:text-brand-700">
+              {item.name}
+            </a>
+          )}
+        </li>
+      ))
+    }
+  </ol>
+</nav>
