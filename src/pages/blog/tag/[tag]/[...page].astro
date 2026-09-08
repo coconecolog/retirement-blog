@@ -3,7 +3,8 @@ import BaseLayout from '../../../../layouts/BaseLayout.astro';
 import PostCard from '../../../../components/PostCard.astro';
 import TagFilter from '../../../../components/TagFilter.astro';
 import Pagination from '../../../../components/Pagination.astro';
-import { getAllPosts, getAllTags } from '../../../../lib/notion';
+import BlogSidebar from '../../../../components/BlogSidebar.astro';
+import { getAllPosts, getAllTags, getAllCategories } from '../../../../lib/notion';
 import { SITE } from '../../../../lib/site.config';
 
 export async function getStaticPaths({ paginate }: any) {
@@ -22,6 +23,8 @@ export async function getStaticPaths({ paginate }: any) {
 const { page } = Astro.props as any;
 const { tag } = Astro.params;
 const tags = await getAllTags();
+const categories = await getAllCategories();
+const popularPosts = (await getAllPosts()).slice(0, 5);
 ---
 
 <BaseLayout
@@ -34,20 +37,26 @@ const tags = await getAllTags();
       <h1 class="text-3xl font-bold text-[var(--color-ink)]">「{tag}」の記事</h1>
     </div>
 
-    <div class="mb-10">
-      <TagFilter tags={tags} activeTag={tag} />
-    </div>
+    <div class="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_280px]">
+      <div class="min-w-0">
+        <div class="mb-10">
+          <TagFilter tags={tags} activeTag={tag} />
+        </div>
 
-    {page.data.length > 0 ? (
-      <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {page.data.map((post: any) => <PostCard post={post} />)}
+        {page.data.length > 0 ? (
+          <div class="grid gap-6 sm:grid-cols-2">
+            {page.data.map((post: any) => <PostCard post={post} />)}
+          </div>
+        ) : (
+          <p class="rounded-2xl border border-dashed border-[var(--color-border)] p-10 text-center text-[var(--color-ink-muted)]">
+            該当する記事がありません。
+          </p>
+        )}
+
+        <Pagination currentPage={page.currentPage} lastPage={page.lastPage} basePath={`/blog/tag/${tag}`} />
       </div>
-    ) : (
-      <p class="rounded-2xl border border-dashed border-[var(--color-border)] p-10 text-center text-[var(--color-ink-muted)]">
-        該当する記事がありません。
-      </p>
-    )}
 
-    <Pagination currentPage={page.currentPage} lastPage={page.lastPage} basePath={`/blog/tag/${tag}`} />
+      <BlogSidebar categories={categories} popularPosts={popularPosts} tags={tags} />
+    </div>
   </div>
 </BaseLayout>
