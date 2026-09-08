@@ -1,20 +1,20 @@
-import rss from '@astrojs/rss';
-import { getAllPosts } from '../lib/notion';
-import { SITE } from '../lib/site.config';
+import rss from "@astrojs/rss";
+import { getAllPosts } from "@/lib/posts";
+import { SITE_NAME, SITE_DESCRIPTION } from "@/consts";
 
 export async function GET(context) {
-  const posts = await getAllPosts();
+  const posts = getAllPosts();
   return rss({
-    title: SITE.title,
-    description: SITE.description,
-    site: context.site ?? SITE.url,
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    site: context.site,
     items: posts.map((post) => ({
       title: post.title,
-      description: post.excerpt,
+      description: post.description,
       pubDate: new Date(post.publishedAt),
       link: `/blog/${post.slug}`,
       categories: post.tags,
     })),
-    customData: `<language>ja-jp</language>`,
+    customData: `<language>ja</language>`,
   });
 }

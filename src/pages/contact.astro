@@ -1,0 +1,44 @@
+---
+// お問い合わせページ（フォームバックエンドなしの簡易版）。
+// ブログ機能のみの構成のため、Cloudflare Pages Functions・Supabase・Resendは使わず、
+// メールアドレスへのmailtoリンクのみで案内する。フォーム送信機能が必要になったら
+// functions/api/contact.js相当の実装（Supabase保存＋Resend通知）を別途追加してください。
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import Breadcrumb from "@/components/Breadcrumb.astro";
+import { SITE_NAME, CONTACT_EMAIL } from "@/consts";
+
+const breadcrumbItems = [
+  { name: "トップ", href: "/" },
+  { name: "お問い合わせ", href: "/contact" },
+];
+---
+
+<BaseLayout
+  title="お問い合わせ"
+  description={`${SITE_NAME}へのお問い合わせはこちらから。`}
+  ogImage="/open-graph/contact.png"
+  pagefindIgnore
+>
+  <Breadcrumb items={breadcrumbItems} />
+
+  <section class="mx-auto max-w-3xl px-5 py-12">
+    <p class="text-sm font-bold uppercase tracking-wider text-brand-600">Contact</p>
+    <h1 class="mt-3 text-3xl font-extrabold tracking-tight text-ink-950">お問い合わせ</h1>
+    <p class="mt-4 leading-relaxed text-neutral-500">
+      ご相談・記事に関するお問い合わせなどは、下記のメールアドレスまでご連絡ください。内容を確認のうえ、折り返しご連絡いたします。
+    </p>
+
+    <div class="mt-8 rounded-2xl border border-neutral-100 bg-neutral-50 p-6 sm:p-8">
+      <p class="text-xs font-medium text-neutral-500">メールアドレス</p>
+      <a href={`mailto:${CONTACT_EMAIL}`} class="mt-1 block text-lg font-bold text-brand-700 hover:underline">
+        {CONTACT_EMAIL}
+      </a>
+    </div>
+
+    <p class="mt-6 text-xs leading-relaxed text-neutral-400">
+      お寄せいただいた内容は、お問い合わせへの対応以外の目的では使用いたしません。詳しくは
+      <a href="/privacy" class="text-brand-600 underline">個人情報保護方針</a>
+      をご確認ください。
+    </p>
+  </section>
+</BaseLayout>
