@@ -33,6 +33,14 @@ const popularPosts = (await getAllPosts()).slice(0, 5);
   canonicalPath={page.currentPage === 1 ? `/blog/tag/${tag}` : `/blog/tag/${tag}/${page.currentPage}`}
 >
   <div class="mx-auto max-w-6xl px-6 py-16">
+    <nav class="mb-6 text-sm text-[var(--color-ink-muted)]">
+      <a href="/" class="hover:text-[var(--color-brand)]">トップ</a>
+      <span class="mx-2">/</span>
+      <a href="/blog" class="hover:text-[var(--color-brand)]">ブログ一覧</a>
+      <span class="mx-2">/</span>
+      <span>{tag}</span>
+    </nav>
+
     <div class="mb-10">
       <h1 class="text-3xl font-bold text-[var(--color-ink)]">「{tag}」の記事</h1>
     </div>
