@@ -1,90 +1,47 @@
 ---
-import Header from '../components/Header.astro';
-import Footer from '../components/Footer.astro';
-import '../styles/global.css';
-import { SITE, ANALYTICS } from '../lib/site.config';
+import SEO from "@/components/SEO.astro";
+import Analytics from "@/components/Analytics.astro";
+import Header from "@/components/Header.astro";
+import Footer from "@/components/Footer.astro";
+import { GTM_ID } from "@/consts";
+import "@/styles/global.css";
 
-export interface Props {
-  title?: string;
-  description?: string;
+interface Props {
+  title: string;
+  description: string;
   ogImage?: string;
-  canonicalPath?: string;
-  type?: 'website' | 'article';
-  jsonLd?: Record<string, unknown> | Record<string, unknown>[];
+  noindex?: boolean;
+   jsonLd?: object | object[];
+  // true にすると、このページをサイト内検索（Pagefind）の索引対象から除外する。
+  // タグ一覧・カテゴリ一覧のように記事本文を含まない一覧ページ向け。
+  // 検索エンジン向けのnoindexとは別物（そちらはSEO.astro側でmeta robotsを制御）。
+  pagefindIgnore?: boolean;
 }
 
-const {
-  title,
-  description = SITE.description,
-  ogImage,
-  canonicalPath = Astro.url.pathname,
-  type = 'website',
-  jsonLd,
-} = Astro.props;
-
-const pageTitle = title ? `${title} | ${SITE.title}` : SITE.title;
-const canonicalUrl = new URL(canonicalPath, SITE.url).toString();
-const resolvedOgImage = ogImage ? new URL(ogImage, SITE.url).toString() : new URL('/ogp-default.png', SITE.url).toString();
-
-const jsonLdList = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
+const { title, description, ogImage, noindex, jsonLd, pagefindIgnore } = Astro.props;
 ---
 
 <!doctype html>
 <html lang="ja">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="canonical" href={canonicalUrl} />
-    <title>{pageTitle}</title>
-    <meta name="description" content={description} />
-    {ANALYTICS.googleSiteVerification && (
-      <meta name="google-site-verification" content={ANALYTICS.googleSiteVerification} />
-    )}
-
-    <!-- OGP / Twitter Card -->
-    <meta property="og:type" content={type} />
-    <meta property="og:site_name" content={SITE.title} />
-    <meta property="og:title" content={pageTitle} />
-    <meta property="og:description" content={description} />
-    <meta property="og:url" content={canonicalUrl} />
-    <meta property="og:image" content={resolvedOgImage} />
-    <meta property="og:locale" content="ja_JP" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content={pageTitle} />
-    <meta name="twitter:description" content={description} />
-    <meta name="twitter:image" content={resolvedOgImage} />
-
-    <link rel="alternate" type="application/rss+xml" title={SITE.title} href="/rss.xml" />
-
-    {jsonLdList.map((entry) => (
-      <script type="application/ld+json" set:html={JSON.stringify(entry)} />
-    ))}
-
-    {ANALYTICS.gaMeasurementId && (
-      <>
-        <script async src={`https://www.googletagmanager.com/gtag/js?id=${ANALYTICS.gaMeasurementId}`}></script>
-        <script define:vars={{ gaId: ANALYTICS.gaMeasurementId }}>
-          window.dataLayer = window.dataLayer || [];
-          function gtag() { dataLayer.push(arguments); }
-          gtag('js', new Date());
-          gtag('config', gaId);
-        </script>
-      </>
-    )}
-    {ANALYTICS.clarityProjectId && (
-      <script define:vars={{ clarityId: ANALYTICS.clarityProjectId }}>
-        (function (c, l, a, r, i, t, y) {
-          c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments); };
-          t = l.createElement(r); t.async = 1; t.src = 'https://www.clarity.ms/tag/' + i;
-          y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(t, y);
-        })(window, document, 'clarity', 'script', clarityId);
-      </script>
-    )}
+    <SEO title={title} description={description} ogImage={ogImage} noindex={noindex} jsonLd={jsonLd} />
+    <Analytics />
   </head>
-  <body class="flex min-h-screen flex-col antialiased">
+  <body class="flex min-h-screen flex-col">
+    {
+      GTM_ID && (
+        <noscript>
+          <iframe
+            src={`https://www.googletagmanager.com/ns.html?id=${GTM_ID}`}
+            height="0"
+            width="0"
+            style="display:none;visibility:hidden"
+          />
+        </noscript>
+      )
+    }
     <Header />
-    <main class="flex-1">
+   <main class="flex-1" data-pagefind-body={pagefindIgnore ? undefined : true} data-pagefind-ignore={pagefindIgnore ? "all" : undefined}>
       <slot />
     </main>
     <Footer />

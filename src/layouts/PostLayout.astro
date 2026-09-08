@@ -1,0 +1,125 @@
+---
+import BaseLayout from "./BaseLayout.astro";
+import Breadcrumb from "@/components/Breadcrumb.astro";
+import TableOfContents from "@/components/TableOfContents.astro";
+import NotionBlocks from "@/components/NotionBlocks.astro";
+import BlogSidebar from "@/components/BlogSidebar.astro";
+import ContactCta from "@/components/ContactCta.astro";
+import { buildArticleSchema, buildFaqSchema } from "@/lib/schema";
+import { buildToc, getAllCategories, getAllTags, getPopularPosts } from "@/lib/posts";
+import type { Post } from "@/lib/types";
+import { toRouteSlug } from "@/lib/routeSlug";
+
+interface Props {
+  post: Post;
+}
+
+const { post } = Astro.props;
+const toc = buildToc(post.blocks);
+const articleSchema = buildArticleSchema(post);
+const faqSchema = buildFaqSchema(post.blocks);
+
+const categories = getAllCategories();
+const popularPosts = getPopularPosts(5).map((p) => ({ slug: p.slug, title: p.title }));
+const tags = getAllTags();
+
+const breadcrumbItems = [
+  { name: "トップ", href: "/" },
+  { name: "ブログ", href: "/blog" },
+  { name: post.title, href: `/blog/${post.slug}` },
+];
+
+const dateLabel = (iso: string) =>
+  new Date(iso).toLocaleDateString("ja-JP", { year: "numeric", month: "2-digit", day: "2-digit" });
+---
+
+<BaseLayout
+  title={post.title}
+  description={post.description}
+  ogImage={`/open-graph/blog/${post.slug}.png`}
+  jsonLd={faqSchema ? [articleSchema, faqSchema] : articleSchema}
+>
+  <Breadcrumb items={breadcrumbItems} />
+
+  <article class="mx-auto max-w-6xl px-5 py-10">
+    <div class="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_320px]">
+      <div class="min-w-0">
+        <header>
+          {
+            (post.categories.length > 0 || post.tags.length > 0) && (
+              <div class="mb-4 flex flex-wrap items-center gap-1.5">
+                {post.categories.map((cat) => (
+                  <a href={`/blog/category/${encodeURIComponent(toRouteSlug(cat))}`}
+                    class="rounded border border-brand-300 px-2.5 py-0.5 text-xs font-medium text-brand-700 no-underline hover:bg-brand-50"
+                  >
+                    {cat}
+                  </a>
+                ))}
+                {post.tags.map((tag) => (
+                  <a href={`/blog/tag/${encodeURIComponent(toRouteSlug(tag))}`}
+                    class="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-700 no-underline hover:bg-brand-100"
+                  >
+                    {tag}
+                  </a>
+                ))}
+              </div>
+            )
+          }
+          <h1 class="text-3xl font-extrabold leading-tight tracking-tight text-ink-950 md:text-4xl">
+            {post.title}
+          </h1>
+          <p class="mt-4 text-sm text-neutral-400">
+            公開日: <time datetime={post.publishedAt}>{dateLabel(post.publishedAt)}</time>
+            {post.updatedAt !== post.publishedAt && (
+              <>
+                {" "}／ 更新日: <time datetime={post.updatedAt}>{dateLabel(post.updatedAt)}</time>
+              </>
+            )}
+          </p>
+        </header>
+
+        {
+          post.keyPoints.length > 0 && (
+            <div class="mt-6 rounded-2xl border border-neutral-100 bg-neutral-50 px-5 py-4">
+              <p class="text-sm font-bold text-ink-950">👉 この記事でわかること</p>
+              <ul class="mt-2 space-y-1">
+                {post.keyPoints.map((point) => (
+                  <li class="text-sm text-neutral-600">•{point}</li>
+                ))}
+              </ul>
+            </div>
+          )
+        }
+
+        {
+          post.thumbnail && (
+            <div class="mt-8 aspect-video w-full overflow-hidden rounded-2xl bg-neutral-100">
+              <img src={post.thumbnail} alt="" class="h-full w-full object-cover" />
+            </div>
+          )
+        }
+
+        {
+          toc.length > 0 && (
+            <details class="mt-8 rounded-2xl border border-neutral-100 bg-neutral-50 open:pb-2">
+              <summary class="cursor-pointer px-5 py-4 text-sm font-bold text-ink-950 marker:text-brand-500">目次</summary>
+              <div class="px-5 pb-4">
+                <TableOfContents items={toc} showHeading={false} wrapped={false} />
+              </div>
+            </details>
+          )
+        }
+
+        <div class="prose-notion mt-10 w-full">
+          <NotionBlocks blocks={post.blocks} />
+        </div>
+      </div>
+
+      <aside class="lg:sticky lg:top-24 lg:self-start">
+        <BlogSidebar categories={categories} popularPosts={popularPosts} tags={tags} />
+      </aside>
+    </div>
+  </article>
+
+  <ContactCta />
+</BaseLayout>
