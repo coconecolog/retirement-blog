@@ -473,6 +473,13 @@ function wrapThumbnailText(text: string, maxWidth: number, maxLines: number): st
   }
   if (current && lines.length < maxLines) lines.push(current);
 
+  // 最終行だけ1文字になってしまう見苦しい折り返し（widow）を避けるため、直前の行に戻す。
+  // 多少maxWidthを超えても、1文字だけが宙に浮くよりは見た目が良い。
+  if (lines.length >= 2 && lines[lines.length - 1].length === 1) {
+    const orphan = lines.pop() as string;
+    lines[lines.length - 1] += orphan;
+  }
+
   const consumedLength = lines.reduce((sum, l) => sum + l.length, 0);
   if (lines.length === maxLines && consumedLength < chars.length) {
     let last = lines[maxLines - 1];
@@ -493,10 +500,12 @@ function generateFallbackThumbnail(idHint: string, dataUri: string | null, title
   try {
     const titleFontSize = 66;
     const titleLineHeight = 82;
-    const titleWrapWidth = 10;
+    // キャンバス幅1200px・左右余白72pxずつ・このフォントサイズでの実測に合わせた値
+    // （ぎりぎりまで詰めて、早すぎる折り返しを避ける）。
+    const titleWrapWidth = 15;
     const subtitleFontSize = 42;
     const subtitleLineHeight = 56;
-    const subtitleWrapWidth = 16;
+    const subtitleWrapWidth = 22;
     const blockGap = 20;
 
     const titleLines = wrapThumbnailText(title, titleWrapWidth, 3);
@@ -778,9 +787,16 @@ export async function getAllPosts(): Promise<Post[]> {
       // サムネイル画像が未設定の記事は、先頭のカテゴリの背景画像（無ければ既定グラデーション）に
       // 「サムネ用タイトル」（未入力なら記事タイトル）「サムネ用サブタイトル」を重ねた画像を自動生成する。
       if (!thumbnail) {
-        const firstCategory = categories[0];
-        const meta = firstCategory ? categoryMeta.get(firstCategory) : undefined;
-        const backgroundDataUri = resolveCategoryBackgroundDataUri(meta?.backgroundImage);
+        // 先頭のカテゴリから順に、実際に背景画像ファイルが見つかるものを探す
+        // （複数カテゴリがある記事で、先頭のカテゴリに画像未設定の場合のフォールバック）。
+        let backgroundDataUri: string | null = null;
+        for (const categoryName of categories) {
+          const candidate = resolveCategoryBackgroundDataUri(categoryMeta.get(categoryName)?.backgroundImage);
+          if (candidate) {
+            backgroundDataUri = candidate;
+            break;
+          }
+        }
         const thumbTitle = getFirstCustomText(props, THUMBNAIL_TITLE_PROP_CANDIDATES) || title;
         const thumbSubtitle = getFirstCustomText(props, THUMBNAIL_SUBTITLE_PROP_CANDIDATES);
         thumbnail = generateFallbackThumbnail(page.id, backgroundDataUri, thumbTitle, thumbSubtitle);
