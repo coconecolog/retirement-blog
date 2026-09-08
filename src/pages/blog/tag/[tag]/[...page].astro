@@ -1,53 +1,129 @@
 ---
-import BaseLayout from '../../../../layouts/BaseLayout.astro';
-import PostCard from '../../../../components/PostCard.astro';
-import TagFilter from '../../../../components/TagFilter.astro';
-import Pagination from '../../../../components/Pagination.astro';
-import { getAllPosts, getAllTags } from '../../../../lib/notion';
-import { SITE } from '../../../../lib/site.config';
+import type { GetStaticPaths, Page } from "astro";
+import type { Post } from "@/lib/types";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import Breadcrumb from "@/components/Breadcrumb.astro";
+import PostCard from "@/components/PostCard.astro";
+import Pagination from "@/components/Pagination.astro";
+import BlogSidebar from "@/components/BlogSidebar.astro";
+import NotionBlocks from "@/components/NotionBlocks.astro";
+import ContactCta from "@/components/ContactCta.astro";
+import { getAllCategories, getAllTags, getPopularPosts, getPostBySlug, getPostsByTag, getTagByName } from "@/lib/posts";
+import { CATEGORY_TAG_PAGE_SIZE } from "@/consts";
+import { toRouteSlug } from "@/lib/routeSlug";
 
-export async function getStaticPaths({ paginate }: any) {
-  const posts = await getAllPosts();
-  const tags = await getAllTags();
+// タグページ。カテゴリページ（/blog/category/[category]/[...page].astro）とデザイン・構成を揃えている
+// （代表記事カード → 記事カード → ページネーション → マスタータグDBの本文）。
 
-  return tags.flatMap((tag) => {
-    const filtered = posts.filter((p) => p.tags.includes(tag));
-    return paginate(filtered, {
-      params: { tag },
-      pageSize: SITE.postsPerPage,
-    });
-  });
-}
+export const getStaticPaths = (async ({ paginate }) => {
+  const tags = getAllTags();
+  // カテゴリページ側と同じ理由・同じ対策。パラメータ値はtoRouteSlug()したものを使い、
+  // 「/」を含むタグ名でもビルドが落ちず、常にリンクが機能するようにする（詳細はrouteSlug.ts参照）。
+  return tags.flatMap((tag) =>
+    paginate(getPostsByTag(tag.name), {
+      params: { tag: toRouteSlug(tag.name) },
+      pageSize: CATEGORY_TAG_PAGE_SIZE,
+      props: { tagName: tag.name },
+    }),
+  );
+}) satisfies GetStaticPaths;
 
-const { page } = Astro.props as any;
-const { tag } = Astro.params;
-const tags = await getAllTags();
+const { tagName, page } = Astro.props as { tagName: string; page: Page<Post> };
+
+const allCategories = getAllCategories();
+// マスタータグDBに登録されていれば、カテゴリページと同じく説明文・代表記事・本文（Notion側の解説文）を表示する。
+const tagInfo = getTagByName(tagName);
+const representativePost = tagInfo?.representativeSlug ? getPostBySlug(tagInfo.representativeSlug) : undefined;
+const tagBasePath = `/blog/tag/${encodeURIComponent(toRouteSlug(tagName))}`;
+
+const sidebarPopularPosts = getPopularPosts(5).map((p) => ({ slug: p.slug, title: p.title }));
+const sidebarTags = getAllTags();
+
+const breadcrumbItems = [
+  { name: "トップ", href: "/" },
+  { name: "ブログ", href: "/blog" },
+  { name: tagName, href: tagBasePath },
+];
 ---
 
 <BaseLayout
-  title={`「${tag}」の記事一覧`}
-  description={`${SITE.title}の「${tag}」タグが付いた記事一覧`}
-  canonicalPath={page.currentPage === 1 ? `/blog/tag/${tag}` : `/blog/tag/${tag}/${page.currentPage}`}
+  title={`${tagName}｜タグ一覧`}
+  description={tagInfo?.description || `「${tagName}」タグが付いた記事の一覧です。`}
+  ogImage="/open-graph/default.png"
+  pagefindIgnore
 >
-  <div class="mx-auto max-w-6xl px-6 py-16">
-    <div class="mb-10">
-      <h1 class="text-3xl font-bold text-[var(--color-ink)]">「{tag}」の記事</h1>
-    </div>
+  <Breadcrumb items={breadcrumbItems} />
 
-    <div class="mb-10">
-      <TagFilter tags={tags} activeTag={tag} />
-    </div>
+  <div class="mx-auto max-w-6xl px-5 py-12">
+    <div class="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_320px]">
+      <div class="min-w-0">
+        <p class="text-xs font-bold text-brand-600">タグ　全{page.total}件</p>
+        <h1 class="mt-2 text-3xl font-extrabold tracking-tight text-ink-950">{tagName}</h1>
 
-    {page.data.length > 0 ? (
-      <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {page.data.map((post: any) => <PostCard post={post} />)}
+        {
+          tagInfo?.description && (
+            <p class="mt-4 text-sm leading-relaxed text-neutral-600 whitespace-pre-line">{tagInfo.description}</p>
+          )
+        }
+
+        {
+          representativePost && (
+            <div class="mt-8 w-full rounded-2xl bg-brand-50 p-6 sm:p-8">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <span class="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-bold text-brand-700 shadow-sm">
+                  ★ まず読むべき代表記事
+                </span>
+                <span class="text-xs font-medium text-neutral-400">{tagName}のロードマップ</span>
+              </div>
+              <a href={`/blog/${representativePost.slug}`}
+                class="mt-6 flex flex-col gap-6 sm:flex-row sm:items-center"
+              >
+                <div class="min-w-0 flex-1">
+                  <p class="text-lg font-bold leading-snug text-ink-950 sm:text-xl">{representativePost.title}</p>
+                  {representativePost.description && (
+                    <p class="mt-2 line-clamp-2 text-sm text-brand-800/80">{representativePost.description}</p>
+                  )}
+                  <span class="mt-5 inline-flex w-fit items-center gap-1 rounded-full border-[1.5px] border-brand-600 bg-white px-5 py-2 text-sm font-bold text-brand-700">
+                    この記事を読む →
+                  </span>
+                </div>
+                {representativePost.thumbnail && (
+                  <div class="aspect-video w-full overflow-hidden rounded-xl shadow-md sm:w-72 sm:shrink-0">
+                    <img src={representativePost.thumbnail} alt="" class="h-full w-full object-cover" />
+                  </div>
+                )}
+              </a>
+            </div>
+          )
+        }
+        {
+          page.data.length > 0 ? (
+            <div class="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2">
+              {page.data.map((post) => (
+                <PostCard post={post} />
+              ))}
+            </div>
+          ) : (
+            <p class="mt-10 text-neutral-400">このタグにはまだ記事がありません。</p>
+          )
+        }
+
+        <Pagination page={page} basePath={tagBasePath} />
+
+        {
+          tagInfo?.blocks && tagInfo.blocks.length > 0 && (
+            <div class="prose-notion mt-12 w-full">
+              <NotionBlocks blocks={tagInfo.blocks} />
+            </div>
+          )
+        }
       </div>
-    ) : (
-      <p class="rounded-2xl border border-dashed border-[var(--color-border)] p-10 text-center text-[var(--color-ink-muted)]">
-        該当する記事がありません。
-      </p>
-    )}
 
-    <Pagination currentPage={page.currentPage} lastPage={page.lastPage} basePath={`/blog/tag/${tag}`} />
+      <aside class="lg:sticky lg:top-24 lg:self-start">
+        <BlogSidebar categories={allCategories} popularPosts={sidebarPopularPosts} tags={sidebarTags} />
+      </aside>
+    </div>
   </div>
+
+  <ContactCta />
 </BaseLayout>
