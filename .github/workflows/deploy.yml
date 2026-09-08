@@ -1,52 +1,62 @@
-name: Build and Deploy to Cloudflare Pages
+name: Deploy to Cloudflare Pages
 
 on:
-  # 30分おきに自動実行し、Notionの更新をチェックして再ビルド・再公開します
-  schedule:
-    - cron: '*/30 * * * *'
-  # コードを push したときも実行
   push:
     branches: [main]
-  # GitHubの「Actions」タブから手動実行したいとき用
+  schedule:
+    - cron: "*/30 * * * *"
   workflow_dispatch: {}
 
 concurrency:
-  group: deploy
+  group: deploy-to-cloudflare-pages
   cancel-in-progress: true
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: リポジトリを取得
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Node.jsをセットアップ
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
 
-      - name: Install dependencies
-        # package.json に新しい依存パッケージ（@google-analytics/data）を追加した際、
-        # package-lock.json を手元で更新して渡す運用が難しい（巨大ファイルのためGitHub上での貼り付けにリスクがある）ので、
-        # ロックファイルとの厳密な一致を要求する npm ci ではなく npm install を使う。
-        run: npm install
+      - name: 依存パッケージをインストール
+        run: npm ci
 
-      - name: Build site (Notionから最新記事を取得)
+      - name: 「公開後の編集中」記事用スナップショットを復元
+        uses: actions/cache/restore@v4
+        with:
+          path: .notion-cache/posts-status-snapshot.json
+          key: notion-posts-status-snapshot-${{ github.run_id }}
+          restore-keys: |
+            notion-posts-status-snapshot-
+
+      - name: Notionから記事データを取得してビルド
         run: npm run build
         env:
-          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
-          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
-          GA4_PROPERTY_ID: ${{ secrets.GA4_PROPERTY_ID }}
-          GA4_SERVICE_ACCOUNT_KEY: ${{ secrets.GA4_SERVICE_ACCOUNT_KEY }}
-          PUBLIC_GA_MEASUREMENT_ID: ${{ secrets.PUBLIC_GA_MEASUREMENT_ID }}
-          PUBLIC_CLARITY_PROJECT_ID: ${{ secrets.PUBLIC_CLARITY_PROJECT_ID }}
-          PUBLIC_GOOGLE_SITE_VERIFICATION: ${{ secrets.PUBLIC_GOOGLE_SITE_VERIFICATION }}
+          NOTION_TOKEN: ${{ secrets.MKTG_AX_NOTION_TOKEN }}
+          NOTION_DATABASE_ID: ${{ secrets.MKTG_AX_NOTION_DATABASE_ID }}
+          NOTION_CATEGORIES_DATABASE_ID: ${{ secrets.MKTG_AX_NOTION_CATEGORIES_DATABASE_ID }}
+          NOTION_TAGS_DATABASE_ID: ${{ secrets.MKTG_AX_NOTION_TAGS_DATABASE_ID }}
+          PUBLIC_SITE_URL: ${{ secrets.MKTG_AX_PUBLIC_SITE_URL }}
+          PUBLIC_GA4_ID: ${{ secrets.MKTG_AX_PUBLIC_GA4_ID }}
+          PUBLIC_CLARITY_ID: ${{ secrets.MKTG_AX_PUBLIC_CLARITY_ID }}
+          PUBLIC_GSC_VERIFICATION: ${{ secrets.MKTG_AX_PUBLIC_GSC_VERIFICATION }}
+          PUBLIC_GTM_ID: ${{ secrets.MKTG_AX_PUBLIC_GTM_ID }}
 
-      - name: Deploy to Cloudflare Pages (direct upload)
+      - name: 「公開後の編集中」記事用スナップショットを保存（次回のビルドが復元する）
+        uses: actions/cache/save@v4
+        with:
+          path: .notion-cache/posts-status-snapshot.json
+          key: notion-posts-status-snapshot-${{ github.run_id }}
+
+      - name: Cloudflare Pagesへデプロイ（direct upload / 無料枠のビルド回数を消費しない）
         uses: cloudflare/wrangler-action@v3
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy ./dist --project-name=${{ secrets.CLOUDFLARE_PAGES_PROJECT_NAME }} --branch=main
+          apiToken: ${{ secrets.MKTG_AX_CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.MKTG_AX_CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=mktg-ax
