@@ -1,0 +1,100 @@
+---
+// サイト内検索結果ページ。検索そのものはビルド後に生成される /pagefind/pagefind.js を
+// クライアント側で読み込んで実行する（Pagefind: https://pagefind.app/）。
+// このページ自体は検索結果を差し込む器（#pagefind-results）を持つだけで、実際の検索処理は下部のscriptで行う。
+// 検索インデックスは package.json の build スクリプトで `astro build` の後に
+// `npx pagefind --site dist` を実行することで生成される。
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { SITE } from '../lib/site.config';
+---
+
+<BaseLayout title="サイト内検索" description={`${SITE.title}のサイト内検索です。`}>
+  <section class="mx-auto max-w-3xl px-6 py-16">
+    <nav class="mb-6 text-sm text-[var(--color-ink-muted)]">
+      <a href="/" class="hover:text-[var(--color-brand)]">トップ</a>
+      <span class="mx-2">/</span>
+      <span>検索結果</span>
+    </nav>
+
+    <h1 class="text-2xl font-bold text-[var(--color-ink)]">サイト内検索</h1>
+
+    <form action="/search" method="get" class="mt-6 flex gap-2">
+      <input
+        type="text"
+        name="q"
+        id="search-input"
+        placeholder="例: 資産形成、出口戦略"
+        class="w-full rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-sm text-[var(--color-ink)] placeholder:text-[var(--color-ink-muted)]"
+      />
+      <button type="submit" class="shrink-0 rounded-full bg-[var(--color-brand)] px-5 py-2 text-sm font-bold text-white hover:bg-[var(--color-brand-dark)]">
+        検索
+      </button>
+    </form>
+
+    <div id="search-status" class="mt-6 text-sm text-[var(--color-ink-muted)]"></div>
+    <div id="pagefind-results" class="mt-4 space-y-4"></div>
+  </section>
+</BaseLayout>
+
+<script define:vars={{ SITE_TITLE: SITE.title }}>
+  const params = new URLSearchParams(location.search);
+  const query = params.get('q') || '';
+
+  const input = document.querySelector('#search-input');
+  const statusEl = document.querySelector('#search-status');
+  const resultsEl = document.querySelector('#pagefind-results');
+
+  if (input) input.value = query;
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  function cleanTitle(title) {
+    return (title || '').replace(new RegExp(`\\s*\\|\\s*${SITE_TITLE}$`), '');
+  }
+
+  async function runSearch(q) {
+    if (!resultsEl || !statusEl) return;
+
+    if (!q) {
+      statusEl.textContent = 'キーワードを入力して検索してください。';
+      resultsEl.innerHTML = '';
+      return;
+    }
+
+    statusEl.textContent = '検索中…';
+    resultsEl.innerHTML = '';
+
+    try {
+      const pagefind = await import('/pagefind/pagefind.js');
+      await pagefind.init();
+      const search = await pagefind.search(q);
+
+      if (search.results.length === 0) {
+        statusEl.textContent = `「${q}」に一致する記事は見つかりませんでした。`;
+        return;
+      }
+
+      const items = await Promise.all(search.results.map((r) => r.data()));
+      statusEl.textContent = `「${q}」の検索結果：${items.length}件`;
+      resultsEl.innerHTML = items
+        .map(
+          (item) => `
+            <a href="${item.url}" class="block rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 transition-shadow hover:shadow-lg">
+              <h2 class="font-bold text-[var(--color-ink)]">${escapeHtml(cleanTitle(item.meta?.title))}</h2>
+              <p class="mt-2 text-sm leading-relaxed text-[var(--color-ink-muted)]">${item.excerpt}</p>
+            </a>
+          `,
+        )
+        .join('');
+    } catch (error) {
+      statusEl.textContent = '検索に失敗しました。しばらくしてから再度お試しください。';
+      console.error(error);
+    }
+  }
+
+  runSearch(query);
+</script>
