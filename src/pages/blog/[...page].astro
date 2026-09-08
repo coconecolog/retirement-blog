@@ -1,53 +1,63 @@
 ---
-import BaseLayout from '../../layouts/BaseLayout.astro';
-import PostCard from '../../components/PostCard.astro';
-import TagFilter from '../../components/TagFilter.astro';
-import Pagination from '../../components/Pagination.astro';
-import { getAllPosts, getAllTags } from '../../lib/notion';
-import { SITE } from '../../lib/site.config';
+import type { GetStaticPaths } from "astro";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import Breadcrumb from "@/components/Breadcrumb.astro";
+import TagFilter from "@/components/TagFilter.astro";
+import PostCard from "@/components/PostCard.astro";
+import Pagination from "@/components/Pagination.astro";
+import BlogSidebar from "@/components/BlogSidebar.astro";
+import { getAllCategories, getAllPosts, getAllTags, getPopularPosts } from "@/lib/posts";
+import { POSTS_PER_PAGE } from "@/consts";
 
-export async function getStaticPaths({ paginate }: any) {
-  const posts = await getAllPosts();
-  return paginate(posts, { pageSize: SITE.postsPerPage });
-}
+export const getStaticPaths = (async ({ paginate }) => {
+  const posts = getAllPosts();
+  return paginate(posts, { pageSize: POSTS_PER_PAGE });
+}) satisfies GetStaticPaths;
 
-const { page } = Astro.props as any;
-const tags = await getAllTags();
+const { page } = Astro.props;
+const tags = getAllTags();
+const categories = getAllCategories();
+const sidebarPopularPosts = getPopularPosts(5).map((p) => ({ slug: p.slug, title: p.title }));
+
+const breadcrumbItems = [
+  { name: "トップ", href: "/" },
+  { name: "ブログ", href: "/blog" },
+];
 ---
 
 <BaseLayout
   title="ブログ"
-  description={`${SITE.title}のブログ記事一覧`}
-  canonicalPath={page.currentPage === 1 ? '/blog' : `/blog/${page.currentPage}`}
+  description="マーケティング分析・施策・マーケット情報についての記事一覧です。"
+  ogImage="/open-graph/default.png"
 >
-  <div class="mx-auto max-w-6xl px-6 py-16">
-    <nav class="mb-6 text-sm text-[var(--color-ink-muted)]">
-      <a href="/" class="hover:text-[var(--color-brand)]">トップ</a>
-      <span class="mx-2">/</span>
-      <span>ブログ一覧</span>
-    </nav>
+  <Breadcrumb items={breadcrumbItems} />
 
-    <div class="mb-10">
-      <h1 class="text-3xl font-bold text-[var(--color-ink)]">ブログ</h1>
-      <p class="mt-3 max-w-2xl text-[var(--color-ink-muted)]">
-        資産形成の基礎から、老後に向けた出口戦略まで。実践に役立つ考え方をお届けします。
-      </p>
-    </div>
+  <div class="mx-auto max-w-6xl px-5 py-12">
+    <div class="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_320px]">
+      <div class="min-w-0">
+        <h1 class="text-3xl font-extrabold tracking-tight text-ink-950">ブログ</h1>
+        <p class="mt-3 text-neutral-500">マーケティング分析・施策・マーケット情報をお届けします。</p>
 
-    <div class="mb-10">
-      <TagFilter tags={tags} />
-    </div>
+        {tags.length > 0 && <div class="mt-6"><TagFilter tags={tags} /></div>}
 
-    {page.data.length > 0 ? (
-      <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {page.data.map((post: any) => <PostCard post={post} />)}
+        {
+          page.data.length > 0 ? (
+            <div class="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {page.data.map((post) => (
+                <PostCard post={post} />
+              ))}
+            </div>
+          ) : (
+            <p class="mt-10 text-neutral-400">まだ記事がありません。</p>
+          )
+        }
+
+        <Pagination page={page} basePath="/blog" />
       </div>
-    ) : (
-      <p class="rounded-2xl border border-dashed border-[var(--color-border)] p-10 text-center text-[var(--color-ink-muted)]">
-        まだ公開されている記事がありません。Notionで記事を作成し「公開」フラグをオンにすると、ここに表示されます。
-      </p>
-    )}
 
-    <Pagination currentPage={page.currentPage} lastPage={page.lastPage} basePath="/blog" />
+      <aside class="lg:sticky lg:top-24 lg:self-start">
+        <BlogSidebar categories={categories} popularPosts={sidebarPopularPosts} tags={tags} />
+      </aside>
+    </div>
   </div>
 </BaseLayout>
