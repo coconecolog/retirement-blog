@@ -1,62 +1,131 @@
 ---
-import BaseLayout from '../../../../layouts/BaseLayout.astro';
-import PostCard from '../../../../components/PostCard.astro';
-import Pagination from '../../../../components/Pagination.astro';
-import { getAllPosts, getAllCategories } from '../../../../lib/notion';
-import { SITE } from '../../../../lib/site.config';
+import type { GetStaticPaths, Page } from "astro";
+import type { Category, Post } from "@/lib/types";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import Breadcrumb from "@/components/Breadcrumb.astro";
+import PostCard from "@/components/PostCard.astro";
+import Pagination from "@/components/Pagination.astro";
+import BlogSidebar from "@/components/BlogSidebar.astro";
+import NotionBlocks from "@/components/NotionBlocks.astro";
+import ContactCta from "@/components/ContactCta.astro";
+import { getAllCategories, getAllTags, getPopularPosts, getPostBySlug, getPostsByCategory } from "@/lib/posts";
+import { CATEGORY_TAG_PAGE_SIZE } from "@/consts";
+import { toRouteSlug } from "@/lib/routeSlug";
 
-export async function getStaticPaths({ paginate }: any) {
-  const posts = await getAllPosts();
-  const categories = await getAllCategories();
+export const getStaticPaths = (async ({ paginate }) => {
+  const categories = getAllCategories();
+  // ルートパラメータには「/」を含む可能性のある生のカテゴリ名をそのまま渡さない。
+  // Astroの静的ビルドは1つの動的セグメント（[category]）の値に「/」が入っていると、
+  // 追加のパス区切りとして解釈してしまいビルド全体が落ちる（実例: 「目標管理・KPI/KGI設計」）。
+  // toRouteSlug()で「/」だけを別の文字に置き換えた文字列をパラメータ値として使い、
+  // リンク側（categoryBasePath等）も同じ関数で生成することで、どんなカテゴリ名でも
+  // コード側の変更なしに常にリンクが機能するようにしている（詳細はrouteSlug.tsのコメント参照）。
+  return categories.flatMap((category) =>
+    paginate(getPostsByCategory(category.name), {
+      params: { category: toRouteSlug(category.name) },
+      pageSize: CATEGORY_TAG_PAGE_SIZE,
+      props: { category },
+    }),
+  );
+}) satisfies GetStaticPaths;
 
-  return categories.flatMap((category) => {
-    const filtered = posts.filter((p) => p.categories.includes(category));
-    return paginate(filtered, {
-      params: { category },
-      pageSize: SITE.postsPerPage,
-    });
-  });
-}
+const { category, page } = Astro.props as { category: Category; page: Page<Post> };
 
-const { page } = Astro.props as any;
-const { category } = Astro.params;
-const categories = await getAllCategories();
+const allCategories = getAllCategories();
+const representativePost = category.representativeSlug ? getPostBySlug(category.representativeSlug) : undefined;
+const categoryBasePath = `/blog/category/${encodeURIComponent(toRouteSlug(category.name))}`;
+
+const sidebarPopularPosts = getPopularPosts(5).map((p) => ({ slug: p.slug, title: p.title }));
+const sidebarTags = getAllTags();
+
+const breadcrumbItems = [
+  { name: "トップ", href: "/" },
+  { name: "ブログ", href: "/blog" },
+  { name: category.name, href: categoryBasePath },
+];
 ---
 
 <BaseLayout
-  title={`「${category}」の記事一覧`}
-  description={`${SITE.title}の「${category}」カテゴリの記事一覧`}
-  canonicalPath={page.currentPage === 1 ? `/blog/category/${category}` : `/blog/category/${category}/${page.currentPage}`}
+  title={`${category.name}｜カテゴリ一覧`}
+  description={category.description || `${category.name}に関する記事の一覧です。`}
+  ogImage="/open-graph/default.png"
+  pagefindIgnore
 >
-  <div class="mx-auto max-w-6xl px-6 py-16">
-    <div class="mb-10">
-      <h1 class="text-3xl font-bold text-[var(--color-ink)]">「{category}」の記事</h1>
+  <Breadcrumb items={breadcrumbItems} />
+
+  <div class="mx-auto max-w-6xl px-5 py-12">
+    <div class="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_320px]">
+      <div class="min-w-0">
+        <p class="text-xs font-bold text-brand-600">カテゴリ　全{page.total}件</p>
+        <h1 class="mt-2 text-3xl font-extrabold tracking-tight text-ink-950">{category.name}</h1>
+
+        {
+          category.description && (
+            <p class="mt-4 text-sm leading-relaxed text-neutral-600 whitespace-pre-line">
+              {category.description}
+            </p>
+          )
+        }
+
+
+        {
+          representativePost && (
+            <div class="mt-8 w-full rounded-2xl bg-brand-50 p-6 sm:p-8">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <span class="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-bold text-brand-700 shadow-sm">
+                  ★ まず読むべき代表記事
+                </span>
+                <span class="text-xs font-medium text-neutral-400">{category.name}のロードマップ</span>
+              </div>
+              <a href={`/blog/${representativePost.slug}`}
+                class="mt-6 flex flex-col gap-6 sm:flex-row sm:items-center"
+              >
+                <div class="min-w-0 flex-1">
+                  <p class="text-lg font-bold leading-snug text-ink-950 sm:text-xl">{representativePost.title}</p>
+                  {representativePost.description && (
+                    <p class="mt-2 line-clamp-2 text-sm text-brand-800/80">{representativePost.description}</p>
+                  )}
+                  <span class="mt-5 inline-flex w-fit items-center gap-1 rounded-full border-[1.5px] border-brand-600 bg-white px-5 py-2 text-sm font-bold text-brand-700">
+                    この記事を読む →
+                  </span>
+                </div>
+                {representativePost.thumbnail && (
+                  <div class="aspect-video w-full overflow-hidden rounded-xl shadow-md sm:w-72 sm:shrink-0">
+                    <img src={representativePost.thumbnail} alt="" class="h-full w-full object-cover" />
+                  </div>
+                )}
+              </a>
+            </div>
+          )
+        }
+        {
+          page.data.length > 0 ? (
+            <div class="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2">
+              {page.data.map((post) => (
+                <PostCard post={post} />
+              ))}
+            </div>
+          ) : (
+            <p class="mt-10 text-neutral-400">このカテゴリにはまだ記事がありません。</p>
+          )
+        }
+
+        <Pagination page={page} basePath={categoryBasePath} />
+
+        {
+          category.blocks && category.blocks.length > 0 && (
+            <div class="prose-notion mt-12 w-full">
+              <NotionBlocks blocks={category.blocks} />
+            </div>
+          )
+        }
+      </div>
+
+      <aside class="lg:sticky lg:top-24 lg:self-start">
+        <BlogSidebar categories={allCategories} popularPosts={sidebarPopularPosts} tags={sidebarTags} />
+      </aside>
     </div>
-
-    {categories.length > 0 && (
-      <div class="mb-10 flex flex-wrap gap-2">
-        {categories.map((c) => (
-          <a href={`/blog/category/${encodeURIComponent(c)}`} class={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
-              c === category
-                ? 'border-[var(--color-brand)] bg-[var(--color-brand)] text-white'
-                : 'border-[var(--color-border)] text-[var(--color-ink-muted)] hover:border-[var(--color-brand)] hover:text-[var(--color-brand)]'
-            }`}>
-            {c}
-          </a>
-        ))}
-      </div>
-    )}
-
-    {page.data.length > 0 ? (
-      <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {page.data.map((post: any) => <PostCard post={post} />)}
-      </div>
-    ) : (
-      <p class="rounded-2xl border border-dashed border-[var(--color-border)] p-10 text-center text-[var(--color-ink-muted)]">
-        該当する記事がありません。
-      </p>
-    )}
-
-    <Pagination currentPage={page.currentPage} lastPage={page.lastPage} basePath={`/blog/category/${category}`} />
   </div>
+
+  <ContactCta />
 </BaseLayout>
