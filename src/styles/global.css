@@ -1,123 +1,93 @@
 @import "tailwindcss";
-@plugin "@tailwindcss/typography";
-
-@import "@fontsource/noto-sans-jp/400.css";
-@import "@fontsource/noto-sans-jp/500.css";
-@import "@fontsource/noto-sans-jp/700.css";
 
 /*
-  デザイン用のカラー・タイポグラフィのトークン。
-  ブランドカラー／ロゴが確定したら --color-brand 系だけ書き換えれば全体に反映されます。
+  デザインテイストは studio.design (https://studio.design/ja) を参考に、
+  「余白を広く取った、ミニマルで自信のあるB2Bらしい」トーンにしています。
+  ブランドカラーを変えたいときは下の --color-brand-* を編集してください。
 */
 @theme {
-  --font-sans: "Noto Sans JP", "Noto Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sans:
+    "Inter", "Noto Sans JP", ui-sans-serif, system-ui, -apple-system, "Hiragino Kaku Gothic ProN",
+    "Yu Gothic", sans-serif;
 
-  --color-paper: #faf9f7;
-  --color-surface: #ffffff;
-  --color-ink: #1c1d21;
-  --color-ink-muted: #64636b;
-  --color-border: #eceae6;
+  --color-brand-50: #f6f9fb;
+  --color-brand-100: #eaf3f8;
+  --color-brand-200: #d2e6f1;
+  --color-brand-300: #b0d4e8;
+  --color-brand-400: #8abfde;
+  --color-brand-500: #56a5d1;
+  --color-brand-600: #337ea9;
+  --color-brand-700: #25668b;
+  --color-brand-800: #1c4e6b;
+  --color-brand-900: #153649;
 
-  --color-brand: #3d5a80;
-  --color-brand-dark: #2c4362;
-  --color-brand-soft: #eef2f6;
-  --color-accent: #c98a4b;
+  --color-ink-950: #0b0b12;
 }
 
-html {
-  scroll-behavior: smooth;
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 5rem;
+  }
+  body {
+    @apply bg-white text-ink-950 antialiased;
+    font-feature-settings: "palt";
+  }
 }
 
-body {
-  font-family: var(--font-sans);
-  background-color: var(--color-paper);
-  color: var(--color-ink);
+/* Notion本文（記事コンテンツ）の共通スタイル */
+.prose-notion {
+  @apply max-w-none text-[1.05rem] leading-[1.9] text-neutral-800;
 }
-
-.prose {
-  --tw-prose-body: var(--color-ink);
-  --tw-prose-headings: var(--color-ink);
-  --tw-prose-links: var(--color-brand);
-  --tw-prose-bold: var(--color-ink);
-  --tw-prose-quotes: var(--color-ink-muted);
-  --tw-prose-quote-borders: var(--color-border);
-  --tw-prose-code: var(--color-brand-dark);
+.prose-notion > * + * {
+  @apply mt-5;
 }
-
-/* Notionの「コールアウト」ブロック用。引用（blockquote）とは違い、枠線・斜体なしの背景ボックス表示にする。 */
-.prose .notion-callout {
-  margin: 1.75em 0;
-  padding: 1rem 1.25rem;
-  border-radius: 0.75rem;
-  background-color: var(--color-brand-soft);
+.prose-notion h2 {
+  @apply mt-16 scroll-mt-24 border-l-4 border-brand-600 py-0.5 pl-4 text-[1.7rem] font-extrabold leading-snug tracking-tight text-ink-950;
 }
-
-.prose .notion-callout p {
-  margin: 0;
-  font-style: normal;
-  color: var(--color-ink);
+.prose-notion h3 {
+  @apply relative mt-10 inline-block scroll-mt-24 pb-3 text-lg font-bold tracking-tight text-ink-950;
 }
-
-.prose .notion-callout p + p {
-  margin-top: 0.75em;
-}
-
-/* Notionの画像ブロック（figure/figcaption）用。 */
-.prose .notion-figure {
-  margin: 2em 0;
-}
-
-.prose .notion-figure img {
+.prose-notion h3::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
   width: 100%;
-  border-radius: 1rem;
+  height: 4px;
+  border-radius: 9999px;
+  background: linear-gradient(to right, #337EA9, #F5F5F5);
 }
-
-.prose .notion-figure figcaption {
-  margin-top: 0.6em;
-  text-align: center;
-  font-size: 0.875em;
-  color: var(--color-ink-muted);
+.prose-notion h4 {
+  @apply mt-8 scroll-mt-24 text-base font-bold tracking-tight text-ink-950;
 }
-
-.prose .notion-figure figcaption a {
-  color: var(--color-brand);
-  text-decoration: underline;
+.prose-notion a {
+  @apply text-brand-700 underline decoration-brand-300 underline-offset-2 hover:decoration-brand-600;
 }
-
-/* Notionの「見出し4」ブロック用。左に縦線を入れたデザイン。 */
-.prose h4.notion-heading-4 {
-  margin-top: 1.75em;
-  margin-bottom: 0.75em;
-  padding-left: 0.75rem;
-  border-left: 4px solid var(--color-brand);
-  font-size: 1.05em;
-  line-height: 1.5;
+.prose-notion strong {
+  @apply font-bold text-ink-950;
 }
-
-/* Notionの「表（テーブル）」ブロック用。 */
-.prose table.notion-table {
-  width: 100%;
-  margin: 1.75em 0;
-  border-collapse: collapse;
-  font-size: 0.9em;
+.prose-notion code {
+  @apply rounded bg-neutral-100 px-1.5 py-0.5 font-mono text-[0.9em] text-brand-700;
 }
-
-.prose table.notion-table th,
-.prose table.notion-table td {
-  border: 1px solid var(--color-border);
-  padding: 0.6em 0.9em;
-  text-align: left;
-  vertical-align: top;
-  font-weight: 700;
+.prose-notion pre {
+  @apply overflow-x-auto rounded-xl bg-neutral-900 p-4 text-sm text-neutral-100;
 }
-
-.prose table.notion-table td {
-  font-weight: 400;
+.prose-notion pre code {
+  @apply bg-transparent p-0 text-inherit;
 }
-
-/* 列の見出し（thead）と行の見出し（各行の1列目）は同じ背景色にする。 */
-.prose table.notion-table thead th,
-.prose table.notion-table tbody th[scope="row"] {
-  background-color: var(--color-brand-soft);
-  color: var(--color-ink);
+.prose-notion ul {
+  @apply list-disc space-y-1.5 pl-6;
+}
+.prose-notion ol {
+  @apply list-decimal space-y-1.5 pl-6;
+}
+.prose-notion hr {
+  @apply my-10 border-neutral-200;
+}
+.prose-notion table {
+  @apply w-full border-collapse text-sm;
+}
+.prose-notion img {
+  @apply rounded-xl;
 }
