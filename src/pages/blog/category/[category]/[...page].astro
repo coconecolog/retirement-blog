@@ -3,7 +3,7 @@ import BaseLayout from '../../../../layouts/BaseLayout.astro';
 import PostCard from '../../../../components/PostCard.astro';
 import Pagination from '../../../../components/Pagination.astro';
 import BlogSidebar from '../../../../components/BlogSidebar.astro';
-import { getAllPosts, getAllCategories, getAllTags } from '../../../../lib/notion';
+import { getAllPosts, getAllCategories, getAllTags, getCategoryMeta } from '../../../../lib/notion';
 import { SITE } from '../../../../lib/site.config';
 
 export async function getStaticPaths({ paginate }: any) {
@@ -24,16 +24,29 @@ const { category } = Astro.params;
 const categories = await getAllCategories();
 const tags = await getAllTags();
 const popularPosts = (await getAllPosts()).slice(0, 5);
+const categoryMeta = await getCategoryMeta();
+const meta = category ? categoryMeta.get(category) : undefined;
 ---
 
 <BaseLayout
   title={`「${category}」の記事一覧`}
-  description={`${SITE.title}の「${category}」カテゴリの記事一覧`}
+  description={meta?.description || `${SITE.title}の「${category}」カテゴリの記事一覧`}
   canonicalPath={page.currentPage === 1 ? `/blog/category/${category}` : `/blog/category/${category}/${page.currentPage}`}
 >
   <div class="mx-auto max-w-6xl px-6 py-16">
+    <nav class="mb-6 text-sm text-[var(--color-ink-muted)]">
+      <a href="/" class="hover:text-[var(--color-brand)]">トップ</a>
+      <span class="mx-2">/</span>
+      <a href="/blog" class="hover:text-[var(--color-brand)]">ブログ一覧</a>
+      <span class="mx-2">/</span>
+      <span>{category}</span>
+    </nav>
+
     <div class="mb-10">
       <h1 class="text-3xl font-bold text-[var(--color-ink)]">「{category}」の記事</h1>
+      {meta?.description && (
+        <p class="mt-4 max-w-2xl whitespace-pre-line text-[var(--color-ink-muted)]">{meta.description}</p>
+      )}
     </div>
 
     <div class="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_280px]">
@@ -63,6 +76,10 @@ const popularPosts = (await getAllPosts()).slice(0, 5);
         )}
 
         <Pagination currentPage={page.currentPage} lastPage={page.lastPage} basePath={`/blog/category/${category}`} />
+
+        {meta?.content && (
+          <div class="prose prose-neutral mt-12 max-w-none" set:html={meta.content} />
+        )}
       </div>
 
       <BlogSidebar categories={categories} popularPosts={popularPosts} tags={tags} />
