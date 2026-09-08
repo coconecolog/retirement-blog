@@ -6,7 +6,7 @@
 import { Client } from '@notionhq/client';
 import { NotionToMarkdown } from 'notion-to-md';
 import { marked, Renderer } from 'marked';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { SITE } from './site.config';
 
@@ -22,6 +22,14 @@ const MASTER_CATEGORY_DATABASE_ID = '3c616da1dade80169c43e77f1ad6444b';
 // マスターDB側で、タグ名・カテゴリ名が入っているタイトル列の名前。
 const MASTER_TAG_TITLE_PROP = 'タグ';
 const MASTER_CATEGORY_TITLE_PROP = 'カテゴリ';
+
+// マスターカテゴリDB側の追加プロパティ名（説明文・自動サムネイル背景画像）。
+// 「サムネ用タイトル」「サムネ用サブタイトル」は記事側のプロパティで、
+// 表記ゆれ（「サムネ用」/「サムネイル用」）があっても拾えるよう候補を複数持たせている。
+const MASTER_CATEGORY_DESCRIPTION_PROP = '説明文';
+const MASTER_CATEGORY_BACKGROUND_PROP = '背景画像ファイル名';
+const THUMBNAIL_TITLE_PROP_CANDIDATES = ['サムネ用タイトル', 'サムネイル用タイトル'];
+const THUMBNAIL_SUBTITLE_PROP_CANDIDATES = ['サムネ用サブタイトル', 'サムネイル用サブタイトル'];
 
 // サムネイル画像の保存先。
 // 本来は public/ 配下に置きたいところだが、Astroはビルド開始時の早い段階で public/ の中身を
@@ -372,6 +380,241 @@ function getCustomText(prop: any): string | null {
   return trimmed || null;
 }
 
+// 候補となるプロパティ名を順に試し、最初に見つかった値を返す（表記ゆれ対策）。
+function getFirstCustomText(props: any, names: string[]): string | null {
+  for (const name of names) {
+    const value = getCustomText(props?.[name]);
+    if (value) return value;
+  }
+  return null;
+}
+
+// ------------------------------------------------------------
+// カテゴリ背景画像 → 自動生成サムネイル（MKTG.AXと同じ仕組み）
+// ------------------------------------------------------------
+//
+// 記事に「サムネイル画像」が設定されていない場合、その記事の（先頭の）カテゴリに
+// マスターカテゴリDBで登録した「背景画像ファイル名」があれば、それを背景に
+// 「サムネ用タイトル」（未入力なら記事タイトル）「サムネ用サブタイトル」を重ねたSVG画像を
+// ビルド時に生成して使う。画像はGitHubリポジトリの public/images/category-backgrounds/
+// にアップロードしておく（資料ファイルと同じ運用）。
+
+const CATEGORY_BACKGROUND_DIR = path.join(process.cwd(), 'public', 'images', 'category-backgrounds') + path.sep;
+// public/ と同じ理由で、生成したサムネイルもビルド出力先（dist/）に直接書き込む。
+const GENERATED_THUMBNAIL_DIR = path.join(process.cwd(), 'dist', 'images', 'generated') + path.sep;
+
+const CATEGORY_BG_MIME_BY_EXT: Record<string, string> = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+};
+
+const categoryBackgroundCache = new Map<string, string | null>();
+
+// カテゴリの背景画像（public/images/category-backgrounds/ にアップロードされたファイル）を
+// 読み込み、SVGに直接埋め込める data: URI にして返す。見つからない場合は null（呼び出し側は
+// グラデーションにフォールバックする）。
+function resolveCategoryBackgroundDataUri(filename: string | null | undefined): string | null {
+  const trimmed = (filename || '').trim();
+  if (!trimmed) return null;
+  if (categoryBackgroundCache.has(trimmed)) return categoryBackgroundCache.get(trimmed) ?? null;
+
+  const ext = path.extname(trimmed).toLowerCase();
+  const mime = CATEGORY_BG_MIME_BY_EXT[ext];
+  if (!mime) {
+    console.warn(`[notion] 背景画像ファイル名「${trimmed}」の拡張子が非対応です（png/jpg/jpeg/webpのみ）。`);
+    categoryBackgroundCache.set(trimmed, null);
+    return null;
+  }
+
+  try {
+    const buffer = readFileSync(`${CATEGORY_BACKGROUND_DIR}${trimmed}`);
+    const dataUri = `data:${mime};base64,${buffer.toString('base64')}`;
+    categoryBackgroundCache.set(trimmed, dataUri);
+    return dataUri;
+  } catch {
+    console.warn(
+      `[notion] 背景画像が見つかりません: public/images/category-backgrounds/${trimmed}（アップロード忘れ、またはファイル名のタイプミスがないか確認してください）`
+    );
+    categoryBackgroundCache.set(trimmed, null);
+    return null;
+  }
+}
+
+function escapeXmlText(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function estimateCharWidth(ch: string): number {
+  return /[ -~]/.test(ch) ? 0.55 : 1;
+}
+
+function wrapThumbnailText(text: string, maxWidth: number, maxLines: number): string[] {
+  const chars = Array.from((text || '').trim());
+  const lines: string[] = [];
+  let current = '';
+  let currentWidth = 0;
+
+  for (const ch of chars) {
+    const w = estimateCharWidth(ch);
+    if (currentWidth + w > maxWidth && current) {
+      lines.push(current);
+      current = '';
+      currentWidth = 0;
+      if (lines.length === maxLines) break;
+    }
+    current += ch;
+    currentWidth += w;
+  }
+  if (current && lines.length < maxLines) lines.push(current);
+
+  const consumedLength = lines.reduce((sum, l) => sum + l.length, 0);
+  if (lines.length === maxLines && consumedLength < chars.length) {
+    let last = lines[maxLines - 1];
+    while (last.length > 1 && estimateCharWidth('…') + [...last].reduce((s, c) => s + estimateCharWidth(c), 0) > maxWidth) {
+      last = last.slice(0, -1);
+    }
+    lines[maxLines - 1] = `${last}…`;
+  }
+  return lines;
+}
+
+// 背景画像もテーマカラーも無い場合の既定グラデーション。
+const DEFAULT_THUMBNAIL_GRADIENT: [string, string] = ['#3d5a80', '#2c4362'];
+
+// サムネイル画像が未設定の記事用に、カテゴリの背景画像（無ければ既定グラデーション）に
+// タイトル・サブタイトルを重ねたSVG画像をビルド出力先に生成する。失敗してもビルドを止めず null を返す。
+function generateFallbackThumbnail(idHint: string, dataUri: string | null, title: string, subtitle: string | null): string | null {
+  try {
+    const titleFontSize = 66;
+    const titleLineHeight = 82;
+    const titleWrapWidth = 10;
+    const subtitleFontSize = 42;
+    const subtitleLineHeight = 56;
+    const subtitleWrapWidth = 16;
+    const blockGap = 20;
+
+    const titleLines = wrapThumbnailText(title, titleWrapWidth, 3);
+    const subtitleLines = subtitle ? wrapThumbnailText(subtitle, subtitleWrapWidth, 2) : [];
+
+    const blockHeight =
+      (subtitleLines.length > 0 ? subtitleLines.length * subtitleLineHeight + blockGap : 0) +
+      titleLines.length * titleLineHeight;
+    let cursorY = (675 - blockHeight) / 2;
+
+    cursorY += subtitleLines.length > 0 ? subtitleLineHeight * 0.75 : titleLineHeight * 0.75;
+    const subtitleTspans = subtitleLines
+      .map((line) => {
+        const tspan = `<tspan x="72" y="${cursorY.toFixed(1)}">${escapeXmlText(line)}</tspan>`;
+        cursorY += subtitleLineHeight;
+        return tspan;
+      })
+      .join('');
+
+    if (subtitleLines.length > 0) cursorY += blockGap - subtitleLineHeight + titleLineHeight * 0.75;
+    const titleTspans = titleLines
+      .map((line) => {
+        const tspan = `<tspan x="72" y="${cursorY.toFixed(1)}">${escapeXmlText(line)}</tspan>`;
+        cursorY += titleLineHeight;
+        return tspan;
+      })
+      .join('');
+
+    const backgroundMarkup = dataUri
+      ? `<image href="${dataUri}" x="0" y="0" width="1200" height="675" preserveAspectRatio="xMidYMid slice" />
+  <rect width="1200" height="675" fill="#000000" opacity="0.35" />`
+      : (() => {
+          const [colorFrom, colorTo] = DEFAULT_THUMBNAIL_GRADIENT;
+          return `<defs>
+    <linearGradient id="grad-${idHint}" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="${colorFrom}" />
+      <stop offset="100%" stop-color="${colorTo}" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="675" fill="url(#grad-${idHint})" />
+  <circle cx="1080" cy="80" r="220" fill="#ffffff" opacity="0.08" />
+  <circle cx="1160" cy="600" r="140" fill="#ffffff" opacity="0.06" />`;
+        })();
+
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675">
+  ${backgroundMarkup}
+  ${subtitleLines.length > 0 ? `<text font-family="'Hiragino Sans','Yu Gothic',sans-serif" font-size="${subtitleFontSize}" font-weight="400" fill="#ffffff" fill-opacity="0.9">${subtitleTspans}</text>` : ''}
+  <text font-family="'Hiragino Sans','Yu Gothic',sans-serif" font-size="${titleFontSize}" font-weight="700" fill="#ffffff">${titleTspans}</text>
+</svg>`;
+
+    if (!existsSync(GENERATED_THUMBNAIL_DIR)) {
+      mkdirSync(GENERATED_THUMBNAIL_DIR, { recursive: true });
+    }
+    const filename = `thumb-${idHint}.svg`;
+    writeFileSync(`${GENERATED_THUMBNAIL_DIR}${filename}`, svg, 'utf-8');
+    return `/images/generated/${filename}`;
+  } catch (err) {
+    console.warn(`[notion] 自動生成サムネイルの作成に失敗しました (${idHint})`, err);
+    return null;
+  }
+}
+
+type CategoryMeta = { description: string | null; backgroundImage: string | null; content: string };
+let cachedCategoryMeta: Map<string, CategoryMeta> | null = null;
+
+// マスターカテゴリDBを丸ごと取得し、カテゴリ名 → {説明文, 背景画像ファイル名, ページ本文のHTML} の
+// マップを作る。カテゴリ一覧ページの説明文・本文表示と、自動生成サムネイルの背景画像選択で使う。
+export async function getCategoryMeta(): Promise<Map<string, CategoryMeta>> {
+  if (cachedCategoryMeta) return cachedCategoryMeta;
+
+  const map = new Map<string, CategoryMeta>();
+  const notion = getClient();
+  if (!notion) {
+    cachedCategoryMeta = map;
+    return map;
+  }
+
+  const n2m = new NotionToMarkdown({ notionClient: notion });
+  n2m.setCustomTransformer('heading_4', async (block: any) => heading4ToHtml(block));
+  n2m.setCustomTransformer('callout', async (block: any) => calloutToHtml(notion, block));
+  n2m.setCustomTransformer('image', async (block: any) => imageToHtml(block));
+  n2m.setCustomTransformer('table', async (block: any) => tableToHtml(notion, block));
+
+  try {
+    const db: any = await notion.databases.retrieve({ database_id: MASTER_CATEGORY_DATABASE_ID });
+    const dataSourceId: string | undefined = db?.data_sources?.[0]?.id;
+    if (!dataSourceId) {
+      console.warn('[notion] マスターカテゴリDBのデータソースが見つかりませんでした。');
+      cachedCategoryMeta = map;
+      return map;
+    }
+    let cursor: string | undefined = undefined;
+    do {
+      const res: any = await notion.dataSources.query({ data_source_id: dataSourceId, start_cursor: cursor });
+      for (const page of res.results as any[]) {
+        const name = getPlainTitle(page.properties?.[MASTER_CATEGORY_TITLE_PROP]);
+        const description = getCustomText(page.properties?.[MASTER_CATEGORY_DESCRIPTION_PROP]);
+        const backgroundImage = getCustomText(page.properties?.[MASTER_CATEGORY_BACKGROUND_PROP]);
+        let content = '';
+        try {
+          const mdBlocks = await n2m.pageToMarkdown(page.id);
+          const mdString = n2m.toMarkdownString(mdBlocks).parent ?? '';
+          content = mdString ? (marked.parse(mdString) as string) : '';
+        } catch (err) {
+          console.warn(`[notion] マスターカテゴリ「${name}」の本文の取得に失敗しました。`, err);
+        }
+        if (name) map.set(name, { description, backgroundImage, content });
+      }
+      cursor = res.has_more ? res.next_cursor ?? undefined : undefined;
+    } while (cursor);
+  } catch (err) {
+    console.warn('[notion] マスターカテゴリDBの詳細情報の取得に失敗しました。', err);
+  }
+
+  cachedCategoryMeta = map;
+  return map;
+}
+
 // マスターDB（マスタータグ／マスターカテゴリ）を丸ごと取得し、ページID→名前（タイトル列の値）の
 // マップを作る。記事側のリレーションプロパティは関連ページIDしか持たないため、
 // この対応表と突き合わせて初めて「タグ」「カテゴリ」の名前がわかる。
@@ -505,9 +748,11 @@ export async function getAllPosts(): Promise<Post[]> {
   }
 
   // 「タグ」「メインタグ」「カテゴリ」の名前解決に使うマスターDBの対応表を先に作っておく。
-  const [tagNameMap, categoryNameMap] = await Promise.all([
+  // categoryMeta は自動生成サムネイルの背景画像選択にも使う。
+  const [tagNameMap, categoryNameMap, categoryMeta] = await Promise.all([
     fetchMasterNameMap(notion, MASTER_TAG_DATABASE_ID, MASTER_TAG_TITLE_PROP),
     fetchMasterNameMap(notion, MASTER_CATEGORY_DATABASE_ID, MASTER_CATEGORY_TITLE_PROP),
+    getCategoryMeta(),
   ]);
 
   do {
@@ -527,8 +772,19 @@ export async function getAllPosts(): Promise<Post[]> {
       const tags: string[] = getRelationNames(props[PROP.tags], tagNameMap);
       const publishedAt: string = props[PROP.publishedAt]?.date?.start ?? page.created_time;
       const updatedAt: string = props[PROP.updatedAt]?.date?.start ?? page.last_edited_time;
+      const categories: string[] = getRelationNames(props[PROP.category], categoryNameMap);
       const rawThumbnail = getThumbnail(props[PROP.thumbnail]);
-      const thumbnail = rawThumbnail ? await downloadThumbnail(rawThumbnail, page.id) : null;
+      let thumbnail = rawThumbnail ? await downloadThumbnail(rawThumbnail, page.id) : null;
+      // サムネイル画像が未設定の記事は、先頭のカテゴリの背景画像（無ければ既定グラデーション）に
+      // 「サムネ用タイトル」（未入力なら記事タイトル）「サムネ用サブタイトル」を重ねた画像を自動生成する。
+      if (!thumbnail) {
+        const firstCategory = categories[0];
+        const meta = firstCategory ? categoryMeta.get(firstCategory) : undefined;
+        const backgroundDataUri = resolveCategoryBackgroundDataUri(meta?.backgroundImage);
+        const thumbTitle = getFirstCustomText(props, THUMBNAIL_TITLE_PROP_CANDIDATES) || title;
+        const thumbSubtitle = getFirstCustomText(props, THUMBNAIL_SUBTITLE_PROP_CANDIDATES);
+        thumbnail = generateFallbackThumbnail(page.id, backgroundDataUri, thumbTitle, thumbSubtitle);
+      }
 
       const fallbackSlug = toSlug(page.id);
       const customSlug = getCustomSlug(props[PROP.slug]);
@@ -553,7 +809,6 @@ export async function getAllPosts(): Promise<Post[]> {
       const summary = getCustomText(props[PROP.summary]);
       // 「メインタグ」は複数選択できてしまうが、従来通り1記事につき1つの運用を前提に、先頭の1件だけを使う。
       const mainTag = getRelationNames(props[PROP.mainTag], tagNameMap)[0] ?? null;
-      const categories: string[] = getRelationNames(props[PROP.category], categoryNameMap);
 
       posts.push({
         id: page.id,
