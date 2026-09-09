@@ -34,9 +34,9 @@ const SNS_ICONS: Record<string, string> = {
 };
 
 const snsLinkClass =
-  'flex items-center justify-center rounded-lg border border-[var(--color-border)] px-3 py-2 text-[var(--color-ink)] hover:border-[var(--color-brand)] hover:text-[var(--color-brand)]';
+  'flex items-center justify-center rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-[var(--color-ink)] hover:border-[var(--color-brand)] hover:text-[var(--color-brand)]';
 const snsPendingClass =
-  'flex items-center justify-center gap-2 rounded-lg border border-dashed border-[var(--color-border)] px-3 py-2 text-[var(--color-ink-muted)] pointer-events-none';
+  'flex items-center justify-center gap-2 rounded-lg border border-dashed border-[var(--color-border)] px-3 py-1.5 text-[var(--color-ink-muted)] pointer-events-none';
 
 const snsItemsRaw = [
   { key: 'x', label: 'X', url: author.sns.x },
@@ -58,14 +58,14 @@ const snsItems = snsItemsRaw.map((sns) => {
 });
 ---
 
-<div class="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 sm:p-8">
-  <p class="mb-4 text-sm font-semibold text-[var(--color-ink-muted)]">この記事の執筆者</p>
+<div class="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-6">
+  <p class="mb-3 text-sm font-semibold text-[var(--color-ink-muted)]">この記事の執筆者</p>
 
   <div class="flex flex-wrap items-center gap-3">
     {author.image ? (
-      <img src={author.image} alt={author.name} class="h-16 w-16 rounded-full object-cover" />
+      <img src={author.image} alt={author.name} class="h-14 w-14 rounded-full object-cover" />
     ) : (
-      <span class="flex h-16 w-16 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-paper)] text-3xl" aria-hidden="true">🙂</span>
+      <span class="flex h-14 w-14 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-paper)] text-2xl" aria-hidden="true">🙂</span>
     )}
     <span class="text-lg font-bold text-[var(--color-ink)]">{author.name}</span>
     {author.role ? (
@@ -74,22 +74,20 @@ const snsItems = snsItemsRaw.map((sns) => {
   </div>
 
   {author.expertise ? (
-    <p class="mt-3 font-semibold text-[var(--color-ink)]">{author.expertise}</p>
+    <p class="mt-2 font-semibold text-[var(--color-ink)]">{author.expertise}</p>
   ) : null}
 
-  <hr class="my-6 border-[var(--color-border)]" />
-
-  <div class="grid gap-8 sm:grid-cols-[1fr_240px]">
+  <div class="mt-4 grid gap-6 sm:grid-cols-[1fr_240px]">
     <div>
       {author.bio ? (
         <p class="whitespace-pre-line text-sm leading-relaxed text-[var(--color-ink-muted)]">{author.bio}</p>
       ) : null}
 
-      <a href={`/blog/author/${encodeURIComponent(author.slug)}`} class="mt-4 inline-block text-sm font-medium text-[var(--color-brand)] hover:underline">この執筆者の記事一覧を見る →</a>
+      <a href={`/blog/author/${encodeURIComponent(author.slug)}`} class="mt-3 inline-block text-sm font-medium text-[var(--color-brand)] hover:underline">この執筆者の記事一覧を見る →</a>
     </div>
 
     <div>
-      <p class="mb-3 text-sm font-semibold text-[var(--color-ink-muted)]">公式SNSアカウント</p>
+      <p class="mb-2 text-sm font-semibold text-[var(--color-ink-muted)]">公式SNSアカウント</p>
       <div class="grid grid-cols-2 gap-2">
         {snsItems.map((sns) => (
           <a href={sns.href} target={sns.target} rel={sns.rel} aria-label={sns.label} title={sns.label} class={sns.className}>
