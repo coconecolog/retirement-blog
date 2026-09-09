@@ -10,7 +10,7 @@ interface Props {
 const { author } = Astro.props;
 ---
 
-
+<a
   href={`/blog/author/${encodeURIComponent(author.slug)}`}
   class="flex items-center gap-2 text-sm font-medium text-[var(--color-ink)] hover:opacity-80"
 >
