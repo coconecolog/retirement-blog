@@ -27,6 +27,11 @@ const SNS_LIST = [
   { label: 'Facebook', url: author.sns.facebook },
   { label: 'YouTube', url: author.sns.youtube },
 ];
+
+const snsLinkClass =
+  'flex items-center justify-center gap-1 rounded-lg border border-[var(--color-border)] px-3 py-2 text-xs font-medium text-[var(--color-ink)] hover:border-[var(--color-brand)] hover:text-[var(--color-brand)]';
+const snsPendingClass =
+  'flex items-center justify-between gap-2 rounded-lg border border-dashed border-[var(--color-border)] px-3 py-2 text-xs text-[var(--color-ink-muted)] pointer-events-none';
 ---
 
 <div class="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 sm:p-8">
@@ -38,18 +43,11 @@ const SNS_LIST = [
         {author.image ? (
           <img src={author.image} alt={author.name} class="h-16 w-16 rounded-full object-cover" />
         ) : (
-          <span
-            class="flex h-16 w-16 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-paper)] text-3xl"
-            aria-hidden="true"
-          >
-            🙂
-          </span>
+          <span class="flex h-16 w-16 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-paper)] text-3xl" aria-hidden="true">🙂</span>
         )}
         <span class="text-lg font-bold text-[var(--color-ink)]">{author.name}</span>
         {author.role && (
-          <span class="rounded-full border border-[var(--color-border)] px-3 py-1 text-xs font-medium text-[var(--color-ink-muted)]">
-            {author.role}
-          </span>
+          <span class="rounded-full border border-[var(--color-border)] px-3 py-1 text-xs font-medium text-[var(--color-ink-muted)]">{author.role}</span>
         )}
       </div>
 
@@ -61,34 +59,23 @@ const SNS_LIST = [
         <p class="mt-3 whitespace-pre-line text-sm leading-relaxed text-[var(--color-ink-muted)]">{author.bio}</p>
       )}
 
-      
-        href={`/blog/author/${encodeURIComponent(author.slug)}`}
-        class="mt-4 inline-block text-sm font-medium text-[var(--color-brand)] hover:underline"
-      >
-        この執筆者の記事一覧を見る →
-      </a>
+      <a href={`/blog/author/${encodeURIComponent(author.slug)}`} class="mt-4 inline-block text-sm font-medium text-[var(--color-brand)] hover:underline">この執筆者の記事一覧を見る →</a>
     </div>
 
     <div>
       <p class="mb-3 text-sm font-semibold text-[var(--color-ink-muted)]">公式SNSアカウント</p>
       <div class="grid grid-cols-2 gap-2">
-        {SNS_LIST.map((sns) =>
-          sns.url ? (
-            
-              href={sns.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="flex items-center justify-center rounded-lg border border-[var(--color-border)] px-3 py-2 text-xs font-medium text-[var(--color-ink)] hover:border-[var(--color-brand)] hover:text-[var(--color-brand)]"
-            >
-              {sns.label}
-            </a>
-          ) : (
-            <span class="flex items-center justify-between gap-2 rounded-lg border border-dashed border-[var(--color-border)] px-3 py-2 text-xs text-[var(--color-ink-muted)]">
-              <span>{sns.label}</span>
-              <span class="text-[10px]">準備中</span>
-            </span>
-          )
-        )}
+        {SNS_LIST.map((sns) => (
+          
+            href={sns.url || undefined}
+            target={sns.url ? '_blank' : undefined}
+            rel={sns.url ? 'noopener noreferrer' : undefined}
+            class={sns.url ? snsLinkClass : snsPendingClass}
+          >
+            <span>{sns.label}</span>
+            {!sns.url && <span class="text-[10px]">準備中</span>}
+          </a>
+        ))}
       </div>
     </div>
   </div>
