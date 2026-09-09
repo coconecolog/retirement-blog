@@ -23,7 +23,7 @@ const MASTER_CATEGORY_DATABASE_ID = '3c616da1dade80169c43e77f1ad6444b';
 const MASTER_TAG_TITLE_PROP = 'タグ';
 const MASTER_CATEGORY_TITLE_PROP = 'カテゴリ';
 
-// マスターカテゴリDB側の追加プロパティ名（説明文・自動サムネイル背景画像）。
+// マスターカテゴリDB側の追加プロパティ名(説明文・自動サムネイル背景画像)。
 // 「サムネ用タイトル」「サムネ用サブタイトル」は記事側のプロパティで、
 // 表記ゆれ（「サムネ用」/「サムネイル用」）があっても拾えるよう候補を複数持たせている。
 const MASTER_CATEGORY_DESCRIPTION_PROP = '説明文';
@@ -31,12 +31,32 @@ const MASTER_CATEGORY_BACKGROUND_PROP = '背景画像ファイル名';
 const THUMBNAIL_TITLE_PROP_CANDIDATES = ['サムネ用タイトル', 'サムネイル用タイトル'];
 const THUMBNAIL_SUBTITLE_PROP_CANDIDATES = ['サムネ用サブタイトル', 'サムネイル用サブタイトル'];
 
+// 執筆者マスターDB（別データベース、記事側からはリレーションで参照）。
+const MASTER_AUTHOR_DATABASE_ID = '3d516da1dade8015965fdce867c279e4';
+const MASTER_AUTHOR_TITLE_PROP = '名前';
+const MASTER_AUTHOR_ROLE_PROP = '肩書';
+const MASTER_AUTHOR_EXPERTISE_PROP = '主な経験分野';
+const MASTER_AUTHOR_BIO_PROP = '執筆者紹介文';
+const MASTER_AUTHOR_SLUG_PROP = 'Slug';
+const MASTER_AUTHOR_IMAGE_PROP = '執筆者画像';
+// SNSリンクは現状すべて空欄（準備中）の想定。空欄の場合はサイト側で「準備中」と表示する。
+const MASTER_AUTHOR_SNS_PROPS = {
+  x: 'X',
+  threads: 'Threads',
+  instagram: 'Instagram',
+  linkedin: 'LinkedIn',
+  facebook: 'Facebook',
+  youtube: 'YouTube',
+} as const;
+
 // サムネイル画像の保存先。
 // 本来は public/ 配下に置きたいところだが、Astroはビルド開始時の早い段階で public/ の中身を
 // dist/ へコピーしてしまい、その後（getStaticPathsの実行中）に public/ へファイルを書き足しても
 // 出力には反映されない。そのためビルド出力先（dist/）に直接書き込む。
 // `npm run build`（= astro build）はプロジェクトのルートディレクトリで実行される前提。
 const THUMBNAIL_DIR = path.join(process.cwd(), 'dist', 'thumbnails') + path.sep;
+// 執筆者画像も同じ理由でビルド出力先（dist/）に直接書き込む。
+const AUTHOR_IMAGE_DIR = path.join(process.cwd(), 'dist', 'authors') + path.sep;
 
 const EXT_BY_CONTENT_TYPE: Record<string, string> = {
   'image/jpeg': 'jpg',
@@ -67,6 +87,8 @@ export const PROP = {
   mainTag: 'メインタグ',
   // サイドバーの「カテゴリ」欄に使う、マスターカテゴリDBへのリレーション（複数選択可）。
   category: 'カテゴリ',
+  // 執筆者マスターDBへのリレーション。複数選択できてしまうが、1記事につき1人の運用を前提に先頭の1件だけを使う。
+  author: '執筆者',
 } as const;
 
 export type TocItem = {
@@ -74,6 +96,26 @@ export type TocItem = {
   text: string;
   // 見出し3（H3）は、直前の見出し2（H2）の下にネストして持たせる。
   children: TocItem[];
+};
+
+export type AuthorSns = {
+  x: string | null;
+  threads: string | null;
+  instagram: string | null;
+  linkedin: string | null;
+  facebook: string | null;
+  youtube: string | null;
+};
+
+export type Author = {
+  id: string;
+  slug: string;
+  name: string;
+  role: string | null;
+  expertise: string | null;
+  bio: string | null;
+  image: string | null;
+  sns: AuthorSns;
 };
 
 export type Post = {
@@ -91,6 +133,7 @@ export type Post = {
   summary: string | null;
   mainTag: string | null;
   categories: string[];
+  author: Author | null;
 };
 
 let cachedPosts: Post[] | null = null;
@@ -158,6 +201,37 @@ async function downloadThumbnail(url: string, pageId: string): Promise<string | 
     return `/thumbnails/${filename}`;
   } catch (err) {
     console.warn(`[notion] サムネイル画像の取得中にエラーが発生しました: ${url}`, err);
+    return null;
+  }
+}
+
+// 執筆者画像も、サムネイル画像と同じ理由（NotionアップロードURLが失効する）でダウンロードして保存する。
+async function downloadAuthorImage(url: string, pageId: string): Promise<string | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.warn(`[notion] 執筆者画像の取得に失敗しました（HTTP ${res.status}）: ${url}`);
+      return null;
+    }
+    const contentType = res.headers.get('content-type')?.split(';')[0]?.trim() ?? '';
+    const ext = EXT_BY_CONTENT_TYPE[contentType];
+    if (!ext) {
+      console.warn(
+        `[notion] 執筆者画像のURLの中身が画像ファイルではないようです（Content-Type: ${
+          contentType || '不明'
+        }）。執筆者マスターDBの執筆者画像プロパティには画像ファイルそのものを直接アップロードしてください。URL: ${url}`
+      );
+      return null;
+    }
+    if (!existsSync(AUTHOR_IMAGE_DIR)) {
+      mkdirSync(AUTHOR_IMAGE_DIR, { recursive: true });
+    }
+    const filename = `${toSlug(pageId)}.${ext}`;
+    const buffer = Buffer.from(await res.arrayBuffer());
+    writeFileSync(`${AUTHOR_IMAGE_DIR}${filename}`, buffer);
+    return `/authors/${filename}`;
+  } catch (err) {
+    console.warn(`[notion] 執筆者画像の取得中にエラーが発生しました: ${url}`, err);
     return null;
   }
 }
@@ -387,6 +461,13 @@ function getFirstCustomText(props: any, names: string[]): string | null {
     if (value) return value;
   }
   return null;
+}
+
+// SNSリンクのプロパティは「URL」型・「テキスト」型のどちらで作られていても拾えるようにする。
+function getUrlOrText(prop: any): string | null {
+  const url: string = typeof prop?.url === 'string' ? prop.url.trim() : '';
+  if (url) return url;
+  return getCustomText(prop);
 }
 
 // ------------------------------------------------------------
@@ -624,6 +705,91 @@ export async function getCategoryMeta(): Promise<Map<string, CategoryMeta>> {
   return map;
 }
 
+let cachedAuthorsById: Map<string, Author> | null = null;
+let cachedAuthorsBySlug: Map<string, Author> | null = null;
+
+// 執筆者マスターDBを丸ごと取得し、ページID→執筆者情報、スラッグ→執筆者情報の両方のマップを作る。
+// 記事側のリレーションはページIDしか持たないため、まずID側で引き、
+// 執筆者ごとの一覧ページ（/blog/author/[slug]）はスラッグ側で引く。
+async function loadAuthors(): Promise<{ byId: Map<string, Author>; bySlug: Map<string, Author> }> {
+  if (cachedAuthorsById && cachedAuthorsBySlug) {
+    return { byId: cachedAuthorsById, bySlug: cachedAuthorsBySlug };
+  }
+
+  const byId = new Map<string, Author>();
+  const bySlug = new Map<string, Author>();
+  const notion = getClient();
+  if (!notion) {
+    cachedAuthorsById = byId;
+    cachedAuthorsBySlug = bySlug;
+    return { byId, bySlug };
+  }
+
+  try {
+    const db: any = await notion.databases.retrieve({ database_id: MASTER_AUTHOR_DATABASE_ID });
+    const dataSourceId: string | undefined = db?.data_sources?.[0]?.id;
+    if (!dataSourceId) {
+      console.warn('[notion] 執筆者マスターDBのデータソースが見つかりませんでした。');
+      cachedAuthorsById = byId;
+      cachedAuthorsBySlug = bySlug;
+      return { byId, bySlug };
+    }
+
+    let cursor: string | undefined = undefined;
+    do {
+      const res: any = await notion.dataSources.query({ data_source_id: dataSourceId, start_cursor: cursor });
+      for (const page of res.results as any[]) {
+        const props = page.properties;
+        const name = getPlainTitle(props?.[MASTER_AUTHOR_TITLE_PROP]);
+        const fallbackSlug = toSlug(page.id);
+        const customSlug = getCustomSlug(props?.[MASTER_AUTHOR_SLUG_PROP]);
+        const slug = customSlug || fallbackSlug;
+        const role = getCustomText(props?.[MASTER_AUTHOR_ROLE_PROP]);
+        const expertise = getCustomText(props?.[MASTER_AUTHOR_EXPERTISE_PROP]);
+        const bio = getCustomText(props?.[MASTER_AUTHOR_BIO_PROP]);
+
+        const rawImage = getThumbnail(props?.[MASTER_AUTHOR_IMAGE_PROP]);
+        const image = rawImage ? await downloadAuthorImage(rawImage, page.id) : null;
+
+        const sns: AuthorSns = {
+          x: getUrlOrText(props?.[MASTER_AUTHOR_SNS_PROPS.x]),
+          threads: getUrlOrText(props?.[MASTER_AUTHOR_SNS_PROPS.threads]),
+          instagram: getUrlOrText(props?.[MASTER_AUTHOR_SNS_PROPS.instagram]),
+          linkedin: getUrlOrText(props?.[MASTER_AUTHOR_SNS_PROPS.linkedin]),
+          facebook: getUrlOrText(props?.[MASTER_AUTHOR_SNS_PROPS.facebook]),
+          youtube: getUrlOrText(props?.[MASTER_AUTHOR_SNS_PROPS.youtube]),
+        };
+
+        const author: Author = { id: page.id, slug, name, role, expertise, bio, image, sns };
+        byId.set(page.id, author);
+        bySlug.set(slug, author);
+      }
+      cursor = res.has_more ? res.next_cursor ?? undefined : undefined;
+    } while (cursor);
+  } catch (err) {
+    console.warn(
+      '[notion] 執筆者マスターDBの取得に失敗しました。Notionの連携（インテグレーション）がこのDBに共有されているか確認してください。',
+      err
+    );
+  }
+
+  cachedAuthorsById = byId;
+  cachedAuthorsBySlug = bySlug;
+  return { byId, bySlug };
+}
+
+// 執筆者一覧（執筆者ごとの一覧ページの静的パス生成に使う）。
+export async function getAllAuthors(): Promise<Author[]> {
+  const { byId } = await loadAuthors();
+  return Array.from(byId.values());
+}
+
+// スラッグから執筆者情報を取得する（/blog/author/[slug] ページ用）。
+export async function getAuthorBySlug(slug: string): Promise<Author | null> {
+  const { bySlug } = await loadAuthors();
+  return bySlug.get(slug) ?? null;
+}
+
 // マスターDB（マスタータグ／マスターカテゴリ）を丸ごと取得し、ページID→名前（タイトル列の値）の
 // マップを作る。記事側のリレーションプロパティは関連ページIDしか持たないため、
 // この対応表と突き合わせて初めて「タグ」「カテゴリ」の名前がわかる。
@@ -758,10 +924,11 @@ export async function getAllPosts(): Promise<Post[]> {
 
   // 「タグ」「メインタグ」「カテゴリ」の名前解決に使うマスターDBの対応表を先に作っておく。
   // categoryMeta は自動生成サムネイルの背景画像選択にも使う。
-  const [tagNameMap, categoryNameMap, categoryMeta] = await Promise.all([
+  const [tagNameMap, categoryNameMap, categoryMeta, authorsById] = await Promise.all([
     fetchMasterNameMap(notion, MASTER_TAG_DATABASE_ID, MASTER_TAG_TITLE_PROP),
     fetchMasterNameMap(notion, MASTER_CATEGORY_DATABASE_ID, MASTER_CATEGORY_TITLE_PROP),
     getCategoryMeta(),
+    loadAuthors().then((r) => r.byId),
   ]);
 
   do {
@@ -825,6 +992,9 @@ export async function getAllPosts(): Promise<Post[]> {
       const summary = getCustomText(props[PROP.summary]);
       // 「メインタグ」は複数選択できてしまうが、従来通り1記事につき1つの運用を前提に、先頭の1件だけを使う。
       const mainTag = getRelationNames(props[PROP.mainTag], tagNameMap)[0] ?? null;
+      // 「執筆者」も同様に複数選択できてしまうが、1記事につき1人の運用を前提に先頭の1件だけを使う。
+      const authorRelationIds: string[] = (props[PROP.author]?.relation ?? []).map((r: any) => r.id);
+      const author: Author | null = authorRelationIds.length > 0 ? authorsById.get(authorRelationIds[0]) ?? null : null;
 
       posts.push({
         id: page.id,
@@ -841,6 +1011,7 @@ export async function getAllPosts(): Promise<Post[]> {
         summary,
         mainTag,
         categories,
+        author,
       });
     }
 
