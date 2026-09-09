@@ -2,6 +2,8 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCard from '../../components/PostCard.astro';
 import BlogSidebar from '../../components/BlogSidebar.astro';
+import AuthorByline from '../../components/AuthorByline.astro';
+import AuthorBox from '../../components/AuthorBox.astro';
 import { getAllPosts, getAllTags, getAllCategories } from '../../lib/notion';
 import { getPopularSlugsByPageviews } from '../../lib/analytics';
 import { formatDate } from '../../lib/format';
@@ -94,11 +96,14 @@ const breadcrumbJsonLd = {
 
     <h1 class="text-3xl font-bold leading-tight text-[var(--color-ink)] sm:text-4xl">{post.title}</h1>
 
-    <div class="mt-4 flex items-center gap-3 text-sm text-[var(--color-ink-muted)]">
-      <time datetime={post.publishedAt}>公開日: {formatDate(post.publishedAt)}</time>
-      {post.updatedAt !== post.publishedAt && (
-        <time datetime={post.updatedAt}>／更新日: {formatDate(post.updatedAt)}</time>
-      )}
+    <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+      {post.author && <AuthorByline author={post.author} />}
+      <div class="flex items-center gap-3 text-sm text-[var(--color-ink-muted)]">
+        <time datetime={post.publishedAt}>公開日: {formatDate(post.publishedAt)}</time>
+        {post.updatedAt !== post.publishedAt && (
+          <time datetime={post.updatedAt}>／更新日: {formatDate(post.updatedAt)}</time>
+        )}
+      </div>
     </div>
 
     {post.summary && (
@@ -139,6 +144,12 @@ const breadcrumbJsonLd = {
     )}
 
     <div class="prose prose-neutral mt-10 max-w-none prose-headings:font-bold prose-h2:scroll-mt-28 prose-h3:scroll-mt-28 prose-a:text-[var(--color-brand)]" set:html={post.html} />
+
+    {post.author && (
+      <div class="mt-12">
+        <AuthorBox author={post.author} />
+      </div>
+    )}
   </article>
 
   <div class="mt-12 lg:mt-0">
