@@ -1,0 +1,95 @@
+---
+interface Props {
+  author: {
+    slug: string;
+    name: string;
+    role: string | null;
+    expertise: string | null;
+    bio: string | null;
+    image: string | null;
+    sns: {
+      x: string | null;
+      threads: string | null;
+      instagram: string | null;
+      linkedin: string | null;
+      facebook: string | null;
+      youtube: string | null;
+    };
+  };
+}
+const { author } = Astro.props;
+
+const SNS_LIST = [
+  { label: 'X', url: author.sns.x },
+  { label: 'Threads', url: author.sns.threads },
+  { label: 'Instagram', url: author.sns.instagram },
+  { label: 'LinkedIn', url: author.sns.linkedin },
+  { label: 'Facebook', url: author.sns.facebook },
+  { label: 'YouTube', url: author.sns.youtube },
+];
+---
+
+<div class="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 sm:p-8">
+  <p class="mb-4 text-sm font-semibold text-[var(--color-ink-muted)]">この記事の執筆者</p>
+
+  <div class="grid gap-8 sm:grid-cols-[1fr_240px]">
+    <div>
+      <div class="flex flex-wrap items-center gap-3">
+        {author.image ? (
+          <img src={author.image} alt={author.name} class="h-16 w-16 rounded-full object-cover" />
+        ) : (
+          <span
+            class="flex h-16 w-16 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-paper)] text-3xl"
+            aria-hidden="true"
+          >
+            🙂
+          </span>
+        )}
+        <span class="text-lg font-bold text-[var(--color-ink)]">{author.name}</span>
+        {author.role && (
+          <span class="rounded-full border border-[var(--color-border)] px-3 py-1 text-xs font-medium text-[var(--color-ink-muted)]">
+            {author.role}
+          </span>
+        )}
+      </div>
+
+      {author.expertise && (
+        <p class="mt-3 font-semibold text-[var(--color-ink)]">{author.expertise}</p>
+      )}
+
+      {author.bio && (
+        <p class="mt-3 whitespace-pre-line text-sm leading-relaxed text-[var(--color-ink-muted)]">{author.bio}</p>
+      )}
+
+      
+        href={`/blog/author/${encodeURIComponent(author.slug)}`}
+        class="mt-4 inline-block text-sm font-medium text-[var(--color-brand)] hover:underline"
+      >
+        この執筆者の記事一覧を見る →
+      </a>
+    </div>
+
+    <div>
+      <p class="mb-3 text-sm font-semibold text-[var(--color-ink-muted)]">公式SNSアカウント</p>
+      <div class="grid grid-cols-2 gap-2">
+        {SNS_LIST.map((sns) =>
+          sns.url ? (
+            
+              href={sns.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="flex items-center justify-center rounded-lg border border-[var(--color-border)] px-3 py-2 text-xs font-medium text-[var(--color-ink)] hover:border-[var(--color-brand)] hover:text-[var(--color-brand)]"
+            >
+              {sns.label}
+            </a>
+          ) : (
+            <span class="flex items-center justify-between gap-2 rounded-lg border border-dashed border-[var(--color-border)] px-3 py-2 text-xs text-[var(--color-ink-muted)]">
+              <span>{sns.label}</span>
+              <span class="text-[10px]">準備中</span>
+            </span>
+          )
+        )}
+      </div>
+    </div>
+  </div>
+</div>
