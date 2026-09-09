@@ -33,7 +33,12 @@ export async function getStaticPaths() {
     // 記事の1つ目の「カテゴリ」が設定されている場合、同じカテゴリを持つ他の記事をレコメンドとして集める（自分は除く、最大3件）。
     const primaryCategory = post.categories?.[0] ?? null;
     const categoryRelatedPosts = primaryCategory
-      ? posts.filter((p) => p.id !== post.id && p.categories.includes(primaryCategory)).slice(0, 3)
+      ? (() => {
+          const sameCategory = posts.filter((p) => p.id !== post.id && p.categories.includes(primaryCategory));
+          // 同カテゴリの記事が3件に満たない場合は、他の記事（新しい順）で3件になるまで埋める。
+          const fallback = posts.filter((p) => p.id !== post.id && !sameCategory.includes(p));
+          return [...sameCategory, ...fallback].slice(0, 3);
+        })()
       : [];
 
     // 人気記事一覧（サイドバー）は自分自身を除いて先頭5件。
