@@ -1,62 +1,192 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCard from '../../components/PostCard.astro';
-import TagFilter from '../../components/TagFilter.astro';
-import Pagination from '../../components/Pagination.astro';
 import BlogSidebar from '../../components/BlogSidebar.astro';
+import AuthorByline from '../../components/AuthorByline.astro';
+import AuthorBox from '../../components/AuthorBox.astro';
 import { getAllPosts, getAllTags, getAllCategories } from '../../lib/notion';
+import { getPopularSlugsByPageviews } from '../../lib/analytics';
+import { formatDate } from '../../lib/format';
 import { SITE } from '../../lib/site.config';
 
-export async function getStaticPaths({ paginate }: any) {
+export async function getStaticPaths() {
   const posts = await getAllPosts();
-  return paginate(posts, { pageSize: SITE.postsPerPage });
+  const tags = await getAllTags();
+  const categories = await getAllCategories();
+
+  // GA4のページビュー数（直近28日）が多い順のスラッグ。取得できない場合は空配列（フォールバックは下で処理）。
+  const popularSlugs = await getPopularSlugsByPageviews();
+  const postsBySlug = new Map(posts.map((p) => [p.slug, p]));
+  const popularFromGA = popularSlugs
+    .map((slug) => postsBySlug.get(slug))
+    .filter((p): p is (typeof posts)[number] => !!p);
+  // GA4のデータが無い／件数が足りない場合は、最新の記事で埋める（記事が0件表示になることを避ける）。
+  const popularFallback = posts.filter((p) => !popularFromGA.includes(p));
+  const popularPostsAll = [...popularFromGA, ...popularFallback];
+
+  return posts.map((post) => {
+    // 「メインタグ」が設定されている記事だけ、同じメインタグを持つ他の記事を関連記事として集める（自分は除く、最大6件）。
+    const relatedPosts = post.mainTag
+      ? posts.filter((p) => p.id !== post.id && p.mainTag === post.mainTag).slice(0, 6)
+      : [];
+
+    // 記事の1つ目の「カテゴリ」が設定されている場合、同じカテゴリを持つ他の記事をレコメンドとして集める（自分は除く、最大3件）。
+    const primaryCategory = post.categories?.[0] ?? null;
+    const categoryRelatedPosts = primaryCategory
+      ? posts.filter((p) => p.id !== post.id && p.categories.includes(primaryCategory)).slice(0, 3)
+      : [];
+
+    // 人気記事一覧（サイドバー）は自分自身を除いて先頭5件。
+    const popularPosts = popularPostsAll.filter((p) => p.id !== post.id).slice(0, 5);
+
+    return {
+      params: { slug: post.slug },
+      props: { post, relatedPosts, primaryCategory, categoryRelatedPosts, tags, categories, popularPosts },
+    };
+  });
 }
 
-const { page } = Astro.props as any;
-const tags = await getAllTags();
-const categories = await getAllCategories();
-const popularPosts = (await getAllPosts()).slice(0, 5);
+const { post, relatedPosts, primaryCategory, categoryRelatedPosts, tags, categories, popularPosts } = Astro.props as any;
+
+const articleJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  headline: post.title,
+  description: post.description,
+  datePublished: post.publishedAt,
+  dateModified: post.updatedAt,
+  image: post.thumbnail ? [new URL(post.thumbnail, SITE.url).toString()] : undefined,
+  author: { '@type': 'Organization', name: SITE.title },
+  publisher: { '@type': 'Organization', name: SITE.title },
+  mainEntityOfPage: { '@type': 'WebPage', '@id': new URL(`/blog/${post.slug}`, SITE.url).toString() },
+};
+
+const breadcrumbJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'トップ', item: SITE.url },
+    { '@type': 'ListItem', position: 2, name: 'ブログ一覧', item: new URL('/blog', SITE.url).toString() },
+    { '@type': 'ListItem', position: 3, name: post.title, item: new URL(`/blog/${post.slug}`, SITE.url).toString() },
+  ],
+};
 ---
 
 <BaseLayout
-  title="ブログ"
-  description={`${SITE.title}のブログ記事一覧`}
-  canonicalPath={page.currentPage === 1 ? '/blog' : `/blog/${page.currentPage}`}
+  title={post.title}
+  description={post.description}
+  type="article"
+  canonicalPath={`/blog/${post.slug}`}
+  ogImage={`/og/${post.slug}.png`}
+  jsonLd={[articleJsonLd, breadcrumbJsonLd]}
 >
-  <div class="mx-auto max-w-6xl px-6 py-16">
+  <div class="mx-auto max-w-6xl px-6 py-16 lg:flex lg:items-start lg:gap-16">
+  <article class="max-w-3xl">
     <nav class="mb-6 text-sm text-[var(--color-ink-muted)]">
       <a href="/" class="hover:text-[var(--color-brand)]">トップ</a>
       <span class="mx-2">/</span>
-      <span>ブログ一覧</span>
+      <a href="/blog" class="hover:text-[var(--color-brand)]">ブログ一覧</a>
+      <span class="mx-2">/</span>
+      <span>{post.title}</span>
     </nav>
 
-    <div class="mb-10">
-      <h1 class="text-3xl font-bold text-[var(--color-ink)]">ブログ</h1>
-      <p class="mt-3 max-w-2xl text-[var(--color-ink-muted)]">
-        資産形成の基礎から、老後に向けた出口戦略まで。実践に役立つ考え方をお届けします。
-      </p>
-    </div>
-
-    <div class="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_280px]">
-      <div class="min-w-0">
-        <div class="mb-10">
-          <TagFilter tags={tags} />
-        </div>
-
-        {page.data.length > 0 ? (
-          <div class="grid gap-6 sm:grid-cols-2">
-            {page.data.map((post: any) => <PostCard post={post} />)}
-          </div>
-        ) : (
-          <p class="rounded-2xl border border-dashed border-[var(--color-border)] p-10 text-center text-[var(--color-ink-muted)]">
-            まだ公開されている記事がありません。Notionで記事を作成し「公開」フラグをオンにすると、ここに表示されます。
-          </p>
-        )}
-
-        <Pagination currentPage={page.currentPage} lastPage={page.lastPage} basePath="/blog" />
+    {post.tags.length > 0 && (
+      <div class="mb-4 flex flex-wrap gap-2">
+        {post.tags.map((tag: string) => (
+          <a href={`/blog/tag/${encodeURIComponent(tag)}`} class="rounded-full bg-[var(--color-brand-soft)] px-3 py-1 text-xs font-medium text-[var(--color-brand-dark)] hover:opacity-80">
+            {tag}
+          </a>
+        ))}
       </div>
+    )}
 
-      <BlogSidebar categories={categories} popularPosts={popularPosts} tags={tags} />
+    <h1 class="text-3xl font-bold leading-tight text-[var(--color-ink)] sm:text-4xl">{post.title}</h1>
+
+    <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+      {post.author && <AuthorByline author={post.author} />}
+      <div class="flex items-center gap-3 text-sm text-[var(--color-ink-muted)]">
+        <time datetime={post.publishedAt}>公開日: {formatDate(post.publishedAt)}</time>
+        {post.updatedAt !== post.publishedAt && (
+          <time datetime={post.updatedAt}>／更新日: {formatDate(post.updatedAt)}</time>
+        )}
+      </div>
     </div>
+
+    {post.summary && (
+      <div class="mt-6 rounded-xl bg-[var(--color-brand-soft)]/40 px-5 py-4">
+        <p class="font-semibold text-[var(--color-ink)]">👉 この記事でわかること</p>
+        <p class="mt-1 whitespace-pre-line text-[var(--color-ink-muted)]">{post.summary}</p>
+      </div>
+    )}
+
+    {post.thumbnail && (
+      <img
+        src={post.thumbnail}
+        alt={post.title}
+        class="mt-8 aspect-[16/9] w-full rounded-2xl object-cover"
+      />
+    )}
+
+    {post.toc.length > 0 && (
+      <nav class="mt-8 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-4" aria-label="目次">
+        <p class="mb-2 text-sm font-semibold text-[var(--color-ink)]">目次</p>
+        <ol class="space-y-1 text-sm">
+          {post.toc.map((item: { id: string; text: string; children: { id: string; text: string }[] }) => (
+            <li>
+              <a href={`#${item.id}`} class="text-[var(--color-brand)] hover:underline">{item.text}</a>
+              {item.children.length > 0 && (
+                <ol class="mt-1 ml-4 space-y-1">
+                  {item.children.map((child) => (
+                    <li>
+                      <a href={`#${child.id}`} class="text-[var(--color-ink-muted)] hover:text-[var(--color-brand)] hover:underline">{child.text}</a>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </li>
+          ))}
+        </ol>
+      </nav>
+    )}
+
+    <div class="prose prose-neutral mt-10 max-w-none prose-headings:font-bold prose-h2:scroll-mt-28 prose-h3:scroll-mt-28 prose-a:text-[var(--color-brand)]" set:html={post.html} />
+
+    {post.author && (
+      <div class="mt-12">
+        <AuthorBox author={post.author} />
+      </div>
+    )}
+  </article>
+
+  <div class="mt-12 lg:mt-0">
+    <BlogSidebar categories={categories} popularPosts={popularPosts} tags={tags} />
+  </div>
+  </div>
+
+  {categoryRelatedPosts.length > 0 && (
+    <div class="mx-auto max-w-6xl px-6 pb-16">
+      <h2 class="mb-6 text-xl font-bold text-[var(--color-ink)]">{primaryCategory}の記事</h2>
+      <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {categoryRelatedPosts.map((related: any) => <PostCard post={related} />)}
+      </div>
+      <div class="mt-8 text-center">
+        <a href={`/blog/category/${encodeURIComponent(primaryCategory)}`} class="text-sm font-medium text-[var(--color-brand)] hover:underline">
+          {primaryCategory}の記事をもっと見る →
+        </a>
+      </div>
+    </div>
+  )}
+
+  {relatedPosts.length > 0 && (
+    <div class="mx-auto max-w-6xl px-6 pb-16">
+      <h2 class="mb-6 text-xl font-bold text-[var(--color-ink)]">{post.mainTag}の記事</h2>
+      <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {relatedPosts.map((related: any) => <PostCard post={related} />)}
+      </div>
+    </div>
+  )}
+
+  <div class="mx-auto max-w-6xl px-6 pb-16 text-center">
+    <a href="/blog" class="text-sm font-medium text-[var(--color-brand)] hover:underline">ブログ一覧へ</a>
   </div>
 </BaseLayout>
