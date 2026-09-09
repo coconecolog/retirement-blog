@@ -1,73 +1,110 @@
 ---
-import BaseLayout from '../../../../layouts/BaseLayout.astro';
-import PostCard from '../../../../components/PostCard.astro';
-import Pagination from '../../../../components/Pagination.astro';
-import BlogSidebar from '../../../../components/BlogSidebar.astro';
-import AuthorBox from '../../../../components/AuthorBox.astro';
-import { getAllPosts, getAllCategories, getAllTags, getAllAuthors, getAuthorBySlug } from '../../../../lib/notion';
-import { SITE } from '../../../../lib/site.config';
-
-export async function getStaticPaths({ paginate }: any) {
-  const posts = await getAllPosts();
-  const authors = await getAllAuthors();
-
-  return authors.flatMap((author) => {
-    const filtered = posts.filter((p) => p.author?.slug === author.slug);
-    return paginate(filtered, {
-      params: { slug: author.slug },
-      pageSize: SITE.postsPerPage,
-    });
-  });
+interface Props {
+  author: {
+    slug: string;
+    name: string;
+    role: string | null;
+    expertise: string | null;
+    bio: string | null;
+    image: string | null;
+    sns: {
+      x: string | null;
+      threads: string | null;
+      instagram: string | null;
+      linkedin: string | null;
+      facebook: string | null;
+      youtube: string | null;
+    };
+  };
+  // 記事ページでは「この記事の執筆者」ラベルと「記事一覧を見る」リンクを表示するが、
+  // 執筆者本人の一覧ページ（/blog/author/[slug]）では自分自身へのリンクになり不要なため、
+  // false を渡して両方非表示にできるようにする。省略時は true（従来通り表示）。
+  showLabel?: boolean;
+  showArchiveLink?: boolean;
 }
+const { author, showLabel = true, showArchiveLink = true } = Astro.props;
 
-const { page } = Astro.props as any;
-const { slug } = Astro.params;
-const author = slug ? await getAuthorBySlug(slug) : null;
-const categories = await getAllCategories();
-const tags = await getAllTags();
-const popularPosts = (await getAllPosts()).slice(0, 5);
+const SNS_ICONS: Record<string, string> = {
+  x: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4l16 16M20 4L4 20"/></svg>',
+  threads:
+    '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>',
+  instagram:
+    '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.5" y2="6.5"/></svg>',
+  linkedin:
+    '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/><path d="M10 9h4v2c1-1.5 2.5-2.3 4.5-2.3C22 8.7 22 12 22 14.5V21h-4v-6c0-1.5 0-3.5-2-3.5s-2.3 2-2.3 3.5V21h-4V9z"/></svg>',
+  facebook:
+    '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>',
+  youtube:
+    '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>',
+};
+
+const snsLinkClass =
+  'flex items-center justify-center rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-[var(--color-ink)] hover:border-[var(--color-brand)] hover:text-[var(--color-brand)]';
+const snsPendingClass =
+  'flex items-center justify-center gap-2 rounded-lg border border-dashed border-[var(--color-border)] px-3 py-1.5 text-[var(--color-ink-muted)] pointer-events-none';
+
+const snsItemsRaw = [
+  { key: 'x', label: 'X', url: author.sns.x },
+  { key: 'threads', label: 'Threads', url: author.sns.threads },
+  { key: 'instagram', label: 'Instagram', url: author.sns.instagram },
+  { key: 'linkedin', label: 'LinkedIn', url: author.sns.linkedin },
+  { key: 'facebook', label: 'Facebook', url: author.sns.facebook },
+  { key: 'youtube', label: 'YouTube', url: author.sns.youtube },
+];
+
+const snsItems = snsItemsRaw.map((sns) => {
+  const hasUrl = sns.url ? true : false;
+  const href = hasUrl ? sns.url : '#';
+  const target = hasUrl ? '_blank' : '_self';
+  const rel = hasUrl ? 'noopener noreferrer' : 'nofollow';
+  const className = hasUrl ? snsLinkClass : snsPendingClass;
+  const icon = SNS_ICONS[sns.key];
+  return { key: sns.key, label: sns.label, href, target, rel, className, icon, hasUrl };
+});
 ---
 
-<BaseLayout
-  title={author ? `${author.name}の記事一覧` : '執筆者の記事一覧'}
-  description={author?.bio || `${SITE.title}の執筆者の記事一覧`}
-  canonicalPath={page.currentPage === 1 ? `/blog/author/${slug}` : `/blog/author/${slug}/${page.currentPage}`}
->
-  <div class="mx-auto max-w-6xl px-6 py-16">
-    <nav class="mb-6 text-sm text-[var(--color-ink-muted)]">
-      <a href="/" class="hover:text-[var(--color-brand)]">トップ</a>
-      <span class="mx-2">/</span>
-      <a href="/blog" class="hover:text-[var(--color-brand)]">ブログ一覧</a>
-      <span class="mx-2">/</span>
-      <span>{author?.name ?? '執筆者'}</span>
-    </nav>
+<div class="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-6">
+  {showLabel && (
+    <p class="mb-3 text-sm font-semibold text-[var(--color-ink-muted)]">この記事の執筆者</p>
+  )}
 
-    <div class="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_280px]">
-      <div class="min-w-0">
-        {author && (
-          <div class="mb-10">
-            <AuthorBox author={author} />
-          </div>
-        )}
-
-        <h1 class="mb-6 text-2xl font-bold text-[var(--color-ink)]">
-          {author ? `${author.name}の記事一覧` : '記事一覧'}
-        </h1>
-
-        {page.data.length > 0 ? (
-          <div class="grid gap-6 sm:grid-cols-2">
-            {page.data.map((post: any) => <PostCard post={post} />)}
-          </div>
+  <div class="grid items-start gap-6 sm:grid-cols-[1fr_240px]">
+    <div>
+      <div class="flex flex-wrap items-center gap-3">
+        {author.image ? (
+          <img src={author.image} alt={author.name} class="h-14 w-14 rounded-full object-cover" />
         ) : (
-          <p class="rounded-2xl border border-dashed border-[var(--color-border)] p-10 text-center text-[var(--color-ink-muted)]">
-            該当する記事がありません。
-          </p>
+          <span class="flex h-14 w-14 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-paper)] text-2xl" aria-hidden="true">🙂</span>
         )}
-
-        <Pagination currentPage={page.currentPage} lastPage={page.lastPage} basePath={`/blog/author/${slug}`} />
+        <span class="text-lg font-bold text-[var(--color-ink)]">{author.name}</span>
+        {author.role ? (
+          <span class="rounded-full border border-[var(--color-border)] px-3 py-1 text-xs font-medium text-[var(--color-ink-muted)]">{author.role}</span>
+        ) : null}
       </div>
 
-      <BlogSidebar categories={categories} popularPosts={popularPosts} tags={tags} />
+      {author.expertise ? (
+        <p class="mt-2 font-semibold text-[var(--color-ink)]">{author.expertise}</p>
+      ) : null}
+
+      {author.bio ? (
+        <p class="mt-3 whitespace-pre-line text-sm leading-relaxed text-[var(--color-ink-muted)]">{author.bio}</p>
+      ) : null}
+
+      {showArchiveLink && (
+        <a href={`/blog/author/${encodeURIComponent(author.slug)}`} class="mt-3 inline-block text-sm font-medium text-[var(--color-brand)] hover:underline">この執筆者の記事一覧を見る →</a>
+      )}
+    </div>
+
+    <div>
+      <p class="mb-2 text-sm font-semibold text-[var(--color-ink-muted)]">公式SNSアカウント</p>
+      <div class="grid grid-cols-2 gap-2">
+        {snsItems.map((sns) => (
+          <a href={sns.href} target={sns.target} rel={sns.rel} aria-label={sns.label} title={sns.label} class={sns.className}>
+            <span set:html={sns.icon} />
+            {sns.hasUrl ? null : <span class="ml-2 text-[10px]">準備中</span>}
+          </a>
+        ))}
+      </div>
     </div>
   </div>
-</BaseLayout>
+</div>
