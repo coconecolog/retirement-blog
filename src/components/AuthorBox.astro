@@ -66,7 +66,7 @@ const snsPendingClass =
       <p class="mb-3 text-sm font-semibold text-[var(--color-ink-muted)]">公式SNSアカウント</p>
       <div class="grid grid-cols-2 gap-2">
         {SNS_LIST.map((sns) => (
-          
+          <a
             href={sns.url || undefined}
             target={sns.url ? '_blank' : undefined}
             rel={sns.url ? 'noopener noreferrer' : undefined}
