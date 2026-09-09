@@ -30,17 +30,23 @@ export async function getStaticPaths() {
       ? posts.filter((p) => p.id !== post.id && p.mainTag === post.mainTag).slice(0, 6)
       : [];
 
+    // 記事の1つ目の「カテゴリ」が設定されている場合、同じカテゴリを持つ他の記事をレコメンドとして集める（自分は除く、最大3件）。
+    const primaryCategory = post.categories?.[0] ?? null;
+    const categoryRelatedPosts = primaryCategory
+      ? posts.filter((p) => p.id !== post.id && p.categories.includes(primaryCategory)).slice(0, 3)
+      : [];
+
     // 人気記事一覧（サイドバー）は自分自身を除いて先頭5件。
     const popularPosts = popularPostsAll.filter((p) => p.id !== post.id).slice(0, 5);
 
     return {
       params: { slug: post.slug },
-      props: { post, relatedPosts, tags, categories, popularPosts },
+            props: { post, relatedPosts, primaryCategory, categoryRelatedPosts, tags, categories, popularPosts },
     };
   });
 }
 
-const { post, relatedPosts, tags, categories, popularPosts } = Astro.props as any;
+const { post, relatedPosts, primaryCategory, categoryRelatedPosts, tags, categories, popularPosts } = Astro.props as any;
 
 const articleJsonLd = {
   '@context': 'https://schema.org',
@@ -156,6 +162,20 @@ const breadcrumbJsonLd = {
     <BlogSidebar categories={categories} popularPosts={popularPosts} tags={tags} />
   </div>
   </div>
+
+  {categoryRelatedPosts.length > 0 && (
+    <div class="mx-auto max-w-6xl px-6 pb-16">
+      <h2 class="mb-6 text-xl font-bold text-[var(--color-ink)]">{primaryCategory}の記事</h2>
+      <div class="grid grid-cols-1 gap-6 sm:grid-cols-3">
+        {categoryRelatedPosts.map((related: any) => <PostCard post={related} />)}
+      </div>
+      <div class="mt-8 text-center">
+        <a href={`/blog/category/${encodeURIComponent(primaryCategory)}`} class="text-sm font-medium text-[var(--color-brand)] hover:underline">
+          {primaryCategory}の記事をもっと見る →
+        </a>
+      </div>
+    </div>
+  )}
 
   {relatedPosts.length > 0 && (
     <div class="mx-auto max-w-6xl px-6 pb-16">
