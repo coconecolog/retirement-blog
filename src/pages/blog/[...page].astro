@@ -166,7 +166,7 @@ const breadcrumbJsonLd = {
   {categoryRelatedPosts.length > 0 && (
     <div class="mx-auto max-w-6xl px-6 pb-16">
       <h2 class="mb-6 text-xl font-bold text-[var(--color-ink)]">{primaryCategory}の記事</h2>
-      <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div class="grid grid-cols-1 gap-6 sm:grid-cols-3">
         {categoryRelatedPosts.map((related: any) => <PostCard post={related} />)}
       </div>
       <div class="mt-8 text-center">
