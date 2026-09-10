@@ -23,9 +23,16 @@ const { page } = Astro.props as any;
 const { category } = Astro.params;
 const categories = await getAllCategories();
 const tags = await getAllTags();
-const popularPosts = (await getAllPosts()).slice(0, 5);
+const allPosts = await getAllPosts();
+const popularPosts = allPosts.slice(0, 5);
 const categoryMeta = await getCategoryMeta();
 const meta = category ? categoryMeta.get(category) : undefined;
+
+// マスターカテゴリDBの「代表記事」（リレーション）を、実際の記事データに解決する。
+// 未設定・参照先が非公開などで見つからない場合はundefinedのまま＝ボックス非表示。
+const representativePost = meta?.representativePageId
+  ? allPosts.find((p) => p.id === meta.representativePageId)
+  : undefined;
 ---
 
 <BaseLayout
@@ -42,38 +49,57 @@ const meta = category ? categoryMeta.get(category) : undefined;
       <span>{category}</span>
     </nav>
 
-    <div class="mb-10">
-      <h1 class="text-3xl font-bold text-[var(--color-ink)]">「{category}」の記事</h1>
-      {meta?.description && (
-        <p class="mt-4 max-w-2xl whitespace-pre-line text-[var(--color-ink-muted)]">{meta.description}</p>
-      )}
-    </div>
-
     <div class="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_280px]">
       <div class="min-w-0">
-        {categories.length > 0 && (
-          <div class="mb-10 flex flex-wrap gap-2">
-            {categories.map((c) => (
-              <a href={`/blog/category/${encodeURIComponent(c)}`} class={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
-                  c === category
-                    ? 'border-[var(--color-brand)] bg-[var(--color-brand)] text-white'
-                    : 'border-[var(--color-border)] text-[var(--color-ink-muted)] hover:border-[var(--color-brand)] hover:text-[var(--color-brand)]'
-                }`}>
-                {c}
-              </a>
-            ))}
+        <p class="text-xs font-bold text-[var(--color-brand)]">カテゴリ　全{page.total}件</p>
+        <h1 class="mt-2 text-3xl font-bold tracking-tight text-[var(--color-ink)]">{category}</h1>
+
+        {meta?.description && (
+          <p class="mt-4 max-w-2xl whitespace-pre-line text-[var(--color-ink-muted)]">{meta.description}</p>
+        )}
+
+        {representativePost && (
+          <div class="mt-8 w-full rounded-2xl bg-[var(--color-brand-soft)] p-6 sm:p-8">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <span class="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-surface)] px-3 py-1 text-xs font-bold text-[var(--color-brand-dark)] shadow-sm">
+                ★ まず読むべき代表記事
+              </span>
+              <span class="text-xs font-medium text-[var(--color-ink-muted)]">{category}のロードマップ</span>
+            </div>
+            <a href={`/blog/${representativePost.slug}`} class="mt-6 flex flex-col gap-6 sm:flex-row sm:items-center">
+              <div class="min-w-0 flex-1">
+                <p class="text-lg font-bold leading-snug text-[var(--color-ink)] sm:text-xl">
+                  {representativePost.title}
+                </p>
+                {representativePost.description && (
+                  <p class="mt-2 line-clamp-2 text-sm text-[var(--color-ink-muted)]">
+                    {representativePost.description}
+                  </p>
+                )}
+                <span class="mt-5 inline-flex w-fit items-center gap-1 rounded-full border-[1.5px] border-[var(--color-brand)] bg-[var(--color-surface)] px-5 py-2 text-sm font-bold text-[var(--color-brand-dark)]">
+                  この記事を読む →
+                </span>
+              </div>
+              {representativePost.thumbnail && (
+                <div class="aspect-video w-full overflow-hidden rounded-xl shadow-md sm:w-72 sm:shrink-0">
+                  <img src={representativePost.thumbnail} alt="" class="h-full w-full object-cover" />
+                </div>
+              )}
+            </a>
           </div>
         )}
 
-        {page.data.length > 0 ? (
-          <div class="grid gap-6 sm:grid-cols-2">
-            {page.data.map((post: any) => <PostCard post={post} />)}
-          </div>
-        ) : (
-          <p class="rounded-2xl border border-dashed border-[var(--color-border)] p-10 text-center text-[var(--color-ink-muted)]">
-            該当する記事がありません。
-          </p>
-        )}
+        <div class="mt-10">
+          {page.data.length > 0 ? (
+            <div class="grid gap-6 sm:grid-cols-2">
+              {page.data.map((post: any) => <PostCard post={post} />)}
+            </div>
+          ) : (
+            <p class="rounded-2xl border border-dashed border-[var(--color-border)] p-10 text-center text-[var(--color-ink-muted)]">
+              該当する記事がありません。
+            </p>
+          )}
+        </div>
 
         <Pagination currentPage={page.currentPage} lastPage={page.lastPage} basePath={`/blog/category/${category}`} />
 
