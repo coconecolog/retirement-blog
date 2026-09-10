@@ -23,11 +23,14 @@ const MASTER_CATEGORY_DATABASE_ID = '3c616da1dade80169c43e77f1ad6444b';
 const MASTER_TAG_TITLE_PROP = 'タグ';
 const MASTER_CATEGORY_TITLE_PROP = 'カテゴリ';
 
-// マスターカテゴリDB側の追加プロパティ名(説明文・自動サムネイル背景画像)。
+// マスターカテゴリDB側の追加プロパティ名(説明文・自動サムネイル背景画像・代表記事)。
 // 「サムネ用タイトル」「サムネ用サブタイトル」は記事側のプロパティで、
 // 表記ゆれ（「サムネ用」/「サムネイル用」）があっても拾えるよう候補を複数持たせている。
 const MASTER_CATEGORY_DESCRIPTION_PROP = '説明文';
 const MASTER_CATEGORY_BACKGROUND_PROP = '背景画像ファイル名';
+// カテゴリページ上部に「まず読むべき代表記事」として表示する記事。記事DBへのリレーション（1カテゴリにつき1件想定、
+// 複数設定されていても先頭の1件だけを使う）。未設定のカテゴリでは代表記事ボックス自体を表示しない。
+const MASTER_CATEGORY_REPRESENTATIVE_PROP = '代表記事';
 const THUMBNAIL_TITLE_PROP_CANDIDATES = ['サムネ用タイトル', 'サムネイル用タイトル'];
 const THUMBNAIL_SUBTITLE_PROP_CANDIDATES = ['サムネ用サブタイトル', 'サムネイル用サブタイトル'];
 
@@ -649,7 +652,13 @@ function generateFallbackThumbnail(idHint: string, dataUri: string | null, title
   }
 }
 
-type CategoryMeta = { description: string | null; backgroundImage: string | null; content: string };
+type CategoryMeta = {
+  description: string | null;
+  backgroundImage: string | null;
+  content: string;
+  // 「代表記事」リレーション先のNotionページID（記事のIDと一致する）。未設定ならnull。
+  representativePageId: string | null;
+};
 let cachedCategoryMeta: Map<string, CategoryMeta> | null = null;
 
 // マスターカテゴリDBを丸ごと取得し、カテゴリ名 → {説明文, 背景画像ファイル名, ページ本文のHTML} の
@@ -685,6 +694,8 @@ export async function getCategoryMeta(): Promise<Map<string, CategoryMeta>> {
         const name = getPlainTitle(page.properties?.[MASTER_CATEGORY_TITLE_PROP]);
         const description = getCustomText(page.properties?.[MASTER_CATEGORY_DESCRIPTION_PROP]);
         const backgroundImage = getCustomText(page.properties?.[MASTER_CATEGORY_BACKGROUND_PROP]);
+        const representativePageId: string | null =
+          page.properties?.[MASTER_CATEGORY_REPRESENTATIVE_PROP]?.relation?.[0]?.id ?? null;
         let content = '';
         try {
           const mdBlocks = await n2m.pageToMarkdown(page.id);
@@ -693,7 +704,7 @@ export async function getCategoryMeta(): Promise<Map<string, CategoryMeta>> {
         } catch (err) {
           console.warn(`[notion] マスターカテゴリ「${name}」の本文の取得に失敗しました。`, err);
         }
-        if (name) map.set(name, { description, backgroundImage, content });
+        if (name) map.set(name, { description, backgroundImage, content, representativePageId });
       }
       cursor = res.has_more ? res.next_cursor ?? undefined : undefined;
     } while (cursor);
