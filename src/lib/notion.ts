@@ -60,6 +60,8 @@ const MASTER_AUTHOR_SNS_PROPS = {
 const THUMBNAIL_DIR = path.join(process.cwd(), 'dist', 'thumbnails') + path.sep;
 // 執筆者画像も同じ理由でビルド出力先（dist/）に直接書き込む。
 const AUTHOR_IMAGE_DIR = path.join(process.cwd(), 'dist', 'authors') + path.sep;
+// 本文中の画像（Notionの画像ブロックに直接アップロードしたもの）も同じ理由でビルド出力先（dist/）に直接書き込む。
+const BODY_IMAGE_DIR = path.join(process.cwd(), 'dist', 'images', 'notion-body') + path.sep;
 
 const EXT_BY_CONTENT_TYPE: Record<string, string> = {
   'image/jpeg': 'jpg',
@@ -239,6 +241,42 @@ async function downloadAuthorImage(url: string, pageId: string): Promise<string 
   }
 }
 
+// 記事本文中の画像（Notionの画像ブロックに直接アップロードした画像）も、サムネイル・執筆者画像と
+// 同じ理由（NotionアップロードURLが1時間ほどで失効する）でダウンロードして保存する。
+//
+// サムネイル・執筆者画像と違い、本文画像には代わりに表示できるフォールバック画像が無いため、
+// ダウンロードに失敗した場合だけは（画像が消えるよりはましという判断で）元のNotionのURLをそのまま返す。
+// この場合に返されるURLは公開後しばらくすると失効し、画像が表示されなくなる可能性がある点に注意。
+async function downloadBodyImage(url: string, blockId: string): Promise<string> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.warn(`[notion] 本文画像の取得に失敗しました（HTTP ${res.status}）。元のURLをそのまま使用します: ${url}`);
+      return url;
+    }
+    const contentType = res.headers.get('content-type')?.split(';')[0]?.trim() ?? '';
+    const ext = EXT_BY_CONTENT_TYPE[contentType];
+    if (!ext) {
+      console.warn(
+        `[notion] 本文画像のURLの中身が画像ファイルではないようです（Content-Type: ${
+          contentType || '不明'
+        }）。元のURLをそのまま使用します。URL: ${url}`
+      );
+      return url;
+    }
+    if (!existsSync(BODY_IMAGE_DIR)) {
+      mkdirSync(BODY_IMAGE_DIR, { recursive: true });
+    }
+    const filename = `${toSlug(blockId)}.${ext}`;
+    const buffer = Buffer.from(await res.arrayBuffer());
+    writeFileSync(`${BODY_IMAGE_DIR}${filename}`, buffer);
+    return `/images/notion-body/${filename}`;
+  } catch (err) {
+    console.warn(`[notion] 本文画像の取得中にエラーが発生しました。元のURLをそのまま使用します: ${url}`, err);
+    return url;
+  }
+}
+
 function escapeHtml(text: string): string {
   return text
     .replace(/&/g, '&amp;')
@@ -408,13 +446,20 @@ async function calloutToHtml(notion: Client, block: any): Promise<string> {
 // ・空欄                     → altなし、キャプション非表示（従来通り画像のみ表示）
 // ・「alt:」または「alt：」で始める → altのみ設定（キャプションは表示されない）
 // ・それ以外の通常のテキスト        → そのテキストをaltとして設定し、キャプションとしても表示する
-function imageToHtml(block: any): string {
+async function imageToHtml(block: any): Promise<string> {
   const image = block.image ?? {};
   const type = image.type;
   let src = '';
   if (type === 'external') src = image.external?.url ?? '';
   if (type === 'file') src = image.file?.url ?? '';
   if (!src) return '';
+
+  // Notionに直接アップロードした画像（type === 'file'）のURLは1時間ほどで失効する一時URLのため、
+  // ここで実際にダウンロードしてサイト自身のファイルとして保存し、失効しないURLに差し替える。
+  // 外部URL画像（type === 'external'）はもともと失効しないURLなので変換不要。
+  if (type === 'file') {
+    src = await downloadBodyImage(src, block.id);
+  }
 
   const captionRichText: any[] = image.caption ?? [];
   const rawCaption: string = captionRichText.map((t: any) => t.plain_text).join('').trim();
