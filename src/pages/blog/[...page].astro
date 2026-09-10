@@ -1,7 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCard from '../../components/PostCard.astro';
-import TagFilter from '../../components/TagFilter.astro';
+import CategoryFilter from '../../components/CategoryFilter.astro';
 import Pagination from '../../components/Pagination.astro';
 import BlogSidebar from '../../components/BlogSidebar.astro';
 import { getAllPosts, getAllTags, getAllCategories } from '../../lib/notion';
@@ -37,7 +37,7 @@ const popularPosts = (await getAllPosts()).slice(0, 5);
     <div class="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_280px]">
       <div class="min-w-0">
         <div class="mb-10">
-          <TagFilter tags={tags} />
+          <CategoryFilter categories={categories} />
         </div>
 
         {page.data.length > 0 ? (
