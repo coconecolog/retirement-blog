@@ -7,6 +7,16 @@ export interface Props {
 }
 
 const { post } = Astro.props;
+
+// 本文の文字数から読了時間を概算する（1分あたり約500文字の日本語読解速度を想定した簡易推定値）。
+function estimateReadMinutes(html: string): number {
+  const textLength = html.replace(/<[^>]*>/g, '').length;
+  return Math.max(1, Math.round(textLength / 500));
+}
+
+const readMinutes = estimateReadMinutes(post.html);
+// サイドバー・カテゴリページ同様、先頭のカテゴリだけをカード上に表示する。
+const category = post.categories[0] ?? null;
 ---
 
 <a
@@ -28,21 +38,25 @@ const { post } = Astro.props;
     )}
   </div>
   <div class="flex flex-1 flex-col gap-3 p-6">
-    {post.tags.length > 0 && (
-      <div class="flex flex-wrap gap-2">
-        {post.tags.slice(0, 3).map((tag) => (
-          <span class="rounded-full bg-[var(--color-brand-soft)] px-3 py-1 text-xs font-medium text-[var(--color-brand-dark)]">
-            {tag}
-          </span>
-        ))}
-      </div>
-    )}
-    <h3 class="text-lg font-bold leading-snug text-[var(--color-ink)] group-hover:text-[var(--color-brand)]">
+    <div class="flex flex-wrap items-center gap-2 text-xs">
+      <span class="rounded-full bg-[var(--color-brand-soft)] px-2.5 py-0.5 font-bold text-[var(--color-brand-dark)]">
+        📝 ブログ記事
+      </span>
+      <span class="text-[var(--color-ink-muted)]">◷ 読了{readMinutes}分</span>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2 text-xs text-[var(--color-ink-muted)]">
+      {category && <span class="font-medium text-[var(--color-brand)]">{category}</span>}
+      <time datetime={post.publishedAt}>{formatDate(post.publishedAt)}</time>
+    </div>
+
+    <h3 class="line-clamp-2 text-lg font-bold leading-snug text-[var(--color-ink)] group-hover:text-[var(--color-brand)]">
       {post.title}
     </h3>
     <p class="line-clamp-2 flex-1 text-sm text-[var(--color-ink-muted)]">{post.excerpt}</p>
-    <time datetime={post.publishedAt} class="text-xs text-[var(--color-ink-muted)]">
-      {formatDate(post.publishedAt)}
-    </time>
+
+    <span class="mt-1 inline-flex w-fit items-center gap-1 rounded-full bg-[var(--color-brand)] px-4 py-1.5 text-xs font-bold text-white">
+      記事を読む →
+    </span>
   </div>
 </a>
