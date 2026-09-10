@@ -133,9 +133,12 @@ const breadcrumbJsonLd = {
     )}
 
     {post.toc.length > 0 && (
-      <nav class="mt-8 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-4" aria-label="目次">
-        <p class="mb-2 text-sm font-semibold text-[var(--color-ink)]">目次</p>
-        <ol class="space-y-1 text-sm">
+      <details class="group mt-8 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
+        <summary class="flex cursor-pointer list-none items-center gap-2 px-5 py-4 text-sm font-semibold text-[var(--color-ink)] marker:content-none [&::-webkit-details-marker]:hidden">
+          <span class="inline-block text-[var(--color-brand)] transition-transform duration-200 group-open:rotate-90" aria-hidden="true">▶</span>
+          目次
+        </summary>
+        <ol class="space-y-1 px-5 pb-4 text-sm">
           {post.toc.map((item: { id: string; text: string; children: { id: string; text: string }[] }) => (
             <li>
               <a href={`#${item.id}`} class="text-[var(--color-brand)] hover:underline">{item.text}</a>
@@ -151,7 +154,7 @@ const breadcrumbJsonLd = {
             </li>
           ))}
         </ol>
-      </nav>
+      </details>
     )}
 
     <div class="prose prose-neutral mt-10 max-w-none prose-headings:font-bold prose-h2:scroll-mt-28 prose-h3:scroll-mt-28 prose-a:text-[var(--color-brand)]" set:html={post.html} />
