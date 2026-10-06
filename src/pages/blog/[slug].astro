@@ -1,57 +1,43 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import PostCard from '../../components/PostCard.astro';
-import BlogSidebar from '../../components/BlogSidebar.astro';
-import AuthorByline from '../../components/AuthorByline.astro';
-import AuthorBox from '../../components/AuthorBox.astro';
-import { getAllPosts, getAllTags, getAllCategories } from '../../lib/notion';
-import { getPopularSlugsByPageviews } from '../../lib/analytics';
-import { formatDate } from '../../lib/format';
-import { SITE } from '../../lib/site.config';
+import { getAllPosts } from '../../lib/notion';
+import { formatDateDot, estimateReadMinutes } from '../../lib/format';
+import { SITE, ARTICLE_SIGNATURE, ARTICLE_DISCLAIMER, AUTHOR_PROFILE, themeColor } from '../../lib/site.config';
 
 export async function getStaticPaths() {
   const posts = await getAllPosts();
-  const tags = await getAllTags();
-  const categories = await getAllCategories();
-
-  // GA4のページビュー数（直近28日）が多い順のスラッグ。取得できない場合は空配列（フォールバックは下で処理）。
-  const popularSlugs = await getPopularSlugsByPageviews();
-  const postsBySlug = new Map(posts.map((p) => [p.slug, p]));
-  const popularFromGA = popularSlugs
-    .map((slug) => postsBySlug.get(slug))
-    .filter((p): p is (typeof posts)[number] => !!p);
-  // GA4のデータが無い／件数が足りない場合は、最新の記事で埋める（記事が0件表示になることを避ける）。
-  const popularFallback = posts.filter((p) => !popularFromGA.includes(p));
-  const popularPostsAll = [...popularFromGA, ...popularFallback];
 
   return posts.map((post) => {
-    // 「メインタグ」が設定されている記事だけ、同じメインタグを持つ他の記事を関連記事として集める（自分は除く、最大6件）。
-    const relatedPosts = post.mainTag
-      ? posts.filter((p) => p.id !== post.id && p.mainTag === post.mainTag).slice(0, 6)
-      : [];
-
-    // 記事の1つ目の「カテゴリ」が設定されている場合、同じカテゴリを持つ他の記事をレコメンドとして集める（自分は除く、最大3件）。
+    // 「この話のとなりに」に並べる2記事。
+    // 1) 同じメインタグの記事 → 2) 同じカテゴリの記事 → 3) 新しい記事 の順で、自分を除いて2件になるまで埋める。
+    const others = posts.filter((p) => p.id !== post.id);
+    const sameMainTag = post.mainTag ? others.filter((p) => p.mainTag === post.mainTag) : [];
     const primaryCategory = post.categories?.[0] ?? null;
-    const categoryRelatedPosts = primaryCategory
-      ? (() => {
-          const sameCategory = posts.filter((p) => p.id !== post.id && p.categories.includes(primaryCategory));
-          // 同カテゴリの記事が3件に満たない場合は、他の記事（新しい順）で3件になるまで埋める。
-          const fallback = posts.filter((p) => p.id !== post.id && !sameCategory.includes(p));
-          return [...sameCategory, ...fallback].slice(0, 3);
-        })()
-      : [];
-
-    // 人気記事一覧（サイドバー）は自分自身を除いて先頭5件。
-    const popularPosts = popularPostsAll.filter((p) => p.id !== post.id).slice(0, 5);
+    const sameCategory = primaryCategory ? others.filter((p) => p.categories.includes(primaryCategory)) : [];
+    const neighbors = [...new Set([...sameMainTag, ...sameCategory, ...others])].slice(0, 2);
 
     return {
       params: { slug: post.slug },
-            props: { post, relatedPosts, primaryCategory, categoryRelatedPosts, tags, categories, popularPosts },
+      props: { post, neighbors, primaryCategory },
     };
   });
 }
 
-const { post, relatedPosts, primaryCategory, categoryRelatedPosts, tags, categories, popularPosts } = Astro.props as any;
+const { post, neighbors, primaryCategory } = Astro.props as any;
+
+// 黄色のコールアウト（今回わかったこと）が複数ある場合、目次からのジャンプ先は最初の1つだけにする。
+let findingsSeen = false;
+const html: string = post.html.replace(/ id="findings"/g, (m: string) => {
+  if (findingsSeen) return '';
+  findingsSeen = true;
+  return m;
+});
+const hasFindings = findingsSeen;
+
+const readMinutes = estimateReadMinutes(post.html);
+const authorName: string = post.author?.name ?? AUTHOR_PROFILE.label;
+const categoryHref = primaryCategory ? `/blog/category/${encodeURIComponent(primaryCategory)}` : null;
+const toc: { id: string; text: string }[] = post.toc ?? [];
 
 const articleJsonLd = {
   '@context': 'https://schema.org',
@@ -70,9 +56,12 @@ const breadcrumbJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'BreadcrumbList',
   itemListElement: [
-    { '@type': 'ListItem', position: 1, name: 'トップ', item: SITE.url },
-    { '@type': 'ListItem', position: 2, name: 'ブログ一覧', item: new URL('/blog', SITE.url).toString() },
-    { '@type': 'ListItem', position: 3, name: post.title, item: new URL(`/blog/${post.slug}`, SITE.url).toString() },
+    { '@type': 'ListItem', position: 1, name: 'ホーム', item: SITE.url },
+    { '@type': 'ListItem', position: 2, name: '実験ログ', item: new URL('/blog', SITE.url).toString() },
+    ...(primaryCategory
+      ? [{ '@type': 'ListItem', position: 3, name: primaryCategory, item: new URL(categoryHref as string, SITE.url).toString() }]
+      : []),
+    { '@type': 'ListItem', position: primaryCategory ? 4 : 3, name: post.title, item: new URL(`/blog/${post.slug}`, SITE.url).toString() },
   ],
 };
 ---
@@ -85,120 +74,133 @@ const breadcrumbJsonLd = {
   ogImage={`/og/${post.slug}.png`}
   jsonLd={[articleJsonLd, breadcrumbJsonLd]}
 >
-  <div class="mx-auto max-w-6xl px-6 py-16 lg:flex lg:gap-16">
-  <article class="max-w-3xl">
-    <nav class="mb-6 text-sm text-[var(--color-ink-muted)]">
-      <a href="/" class="hover:text-[var(--color-brand)]">トップ</a>
-      <span class="mx-2">/</span>
-      <a href="/blog" class="hover:text-[var(--color-brand)]">ブログ一覧</a>
-      <span class="mx-2">/</span>
-      <span>{post.title}</span>
-    </nav>
-
-    {post.tags.length > 0 && (
-      <div class="mb-4 flex flex-wrap gap-2">
-        {post.tags.map((tag: string) => (
-          <a href={`/blog/tag/${encodeURIComponent(tag)}`} class="rounded-full bg-[var(--color-brand-soft)] px-3 py-1 text-xs font-medium text-[var(--color-brand-dark)] hover:opacity-80">
-            {tag}
-          </a>
-        ))}
-      </div>
-    )}
-
-    <h1 class="text-3xl font-bold leading-tight text-[var(--color-ink)] sm:text-4xl">{post.title}</h1>
-
-    <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
-      {post.author && <AuthorByline author={post.author} />}
-      <div class="flex items-center gap-3 text-sm text-[var(--color-ink-muted)]">
-        <time datetime={post.publishedAt}>公開日: {formatDate(post.publishedAt)}</time>
-        {post.updatedAt !== post.publishedAt && (
-          <time datetime={post.updatedAt}>／更新日: {formatDate(post.updatedAt)}</time>
+  <!-- ===== 記事の冒頭 ===== -->
+  <section class="px-6 pt-[30px] pb-12 md:px-24 md:pb-16">
+    <div class="mx-auto max-w-[1248px]">
+      <nav class="flex flex-wrap items-center gap-[14px] text-[11px] text-[var(--color-ink-muted)]" aria-label="パンくずリスト">
+        <a href="/" class="hover:text-[var(--color-brand)]">ホーム</a>
+        <span>／</span>
+        <a href="/blog" class="hover:text-[var(--color-brand)]">実験ログ</a>
+        {primaryCategory && (
+          <>
+            <span>／</span>
+            <a href={categoryHref} class="hover:text-[var(--color-brand)]">{primaryCategory}</a>
+          </>
         )}
-      </div>
-    </div>
+      </nav>
 
-    {post.summary && (
-      <div class="mt-6 rounded-xl bg-[var(--color-brand-soft)]/40 px-5 py-4">
-        <p class="font-semibold text-[var(--color-ink)]">👉 この記事でわかること</p>
-        <p class="mt-1 whitespace-pre-line text-[var(--color-ink-muted)]">{post.summary}</p>
-      </div>
-    )}
-
-    {post.thumbnail && (
-      <img
-        src={post.thumbnail}
-        alt={post.title}
-        class="mt-8 aspect-[16/9] w-full rounded-2xl object-cover"
-      />
-    )}
-
-    {post.toc.length > 0 && (
-      <details class="group mt-8 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
-        <summary class="flex cursor-pointer list-none items-center gap-2 px-5 py-4 text-sm font-semibold text-[var(--color-ink)] marker:content-none [&::-webkit-details-marker]:hidden">
-          <span class="inline-block text-[var(--color-brand)] transition-transform duration-200 group-open:rotate-90" aria-hidden="true">▶</span>
-          目次
-        </summary>
-        <ol class="space-y-1 px-5 pb-4 text-sm">
-          {post.toc.map((item: { id: string; text: string; children: { id: string; text: string }[] }) => (
-            <li>
-              <a href={`#${item.id}`} class="text-[var(--color-brand)] hover:underline">{item.text}</a>
-              {item.children.length > 0 && (
-                <ol class="mt-1 ml-4 space-y-1">
-                  {item.children.map((child) => (
-                    <li>
-                      <a href={`#${child.id}`} class="text-[var(--color-ink-muted)] hover:text-[var(--color-brand)] hover:underline">{child.text}</a>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </li>
-          ))}
-        </ol>
-      </details>
-    )}
-
-    <div class="prose prose-neutral mt-10 max-w-none prose-headings:font-bold prose-h2:scroll-mt-28 prose-h3:scroll-mt-28 prose-a:text-[var(--color-brand)]" set:html={post.html} />
-
-    {post.author && (
-      <div class="mt-12">
-        <AuthorBox author={post.author} />
-      </div>
-    )}
-  </article>
-
-  <div class="mt-12 lg:mt-0">
-    <BlogSidebar categories={categories} popularPosts={popularPosts} tags={tags} />
-  </div>
-  </div>
-
-  {categoryRelatedPosts.length > 0 && (
-    <div class="mx-auto max-w-6xl px-6 pb-16">
-      <div class="max-w-3xl">
-        <h2 class="mb-6 text-xl font-bold text-[var(--color-ink)]">{primaryCategory}の記事</h2>
-        <div class="grid grid-cols-1 gap-6 sm:grid-cols-3">
-          {categoryRelatedPosts.map((related: any) => <PostCard post={related} />)}
-        </div>
-        <div class="mt-8 text-center">
-          <a href={`/blog/category/${encodeURIComponent(primaryCategory)}`} class="text-sm font-medium text-[var(--color-brand)] hover:underline">
-            {primaryCategory}の記事をもっと見る →
-          </a>
+      <div class="mt-12 flex flex-col items-center gap-6 text-center md:mt-14">
+        <p class="eyebrow whitespace-pre">{primaryCategory ? `${primaryCategory}  /  実験ログ` : '実験ログ'}</p>
+        <h1 class="max-w-[980px] font-serif text-[30px] font-semibold leading-[1.55] text-[var(--color-ink)] sm:text-[38px] lg:text-[46px]">{post.title}</h1>
+        {post.summary && (
+          <p class="max-w-[760px] whitespace-pre-line text-[15px] leading-[2] text-[var(--color-ink-muted)] sm:text-[17px]">{post.summary}</p>
+        )}
+        <div class="flex flex-wrap items-center justify-center gap-4 text-[12px] text-[var(--color-ink-muted)]">
+          <span class="text-[var(--color-ink)]">{authorName}</span>
+          <span class="size-[3px] rounded-full bg-[var(--color-accent)]"></span>
+          <time datetime={post.publishedAt}>{formatDateDot(post.publishedAt)}</time>
+          <span class="size-[3px] rounded-full bg-[var(--color-accent)]"></span>
+          <span>約{readMinutes}分で読めます</span>
         </div>
       </div>
+
+      {post.thumbnail && (
+        <div class="mx-auto mt-12 max-w-[760px] md:mt-14">
+          <img src={post.thumbnail} alt="" class="aspect-[16/9] w-full object-cover" />
+        </div>
+      )}
     </div>
+  </section>
+
+  <!-- ===== 本文エリア（左：目次／右：本文） ===== -->
+  <section class="px-6 md:px-24">
+    <div class="mx-auto flex max-w-[1248px] flex-col gap-10 lg:flex-row lg:gap-[54px]">
+      {toc.length > 0 && (
+        <aside class="lg:w-[190px] lg:shrink-0">
+          <div class="flex flex-col gap-6 pt-1 lg:sticky lg:top-8">
+            <p class="eyebrow">このログの道順</p>
+            <ol class="flex flex-col gap-6">
+              {toc.map((item, i) => (
+                <li>
+                  <a href={`#${item.id}`} class="group flex items-start gap-3">
+                    <span class="pt-[5px] text-[11px] leading-none text-[var(--color-accent)]">{String(i + 1).padStart(2, '0')}</span>
+                    <span class="text-[12px] leading-[1.9] text-[var(--color-ink-muted)] group-hover:text-[var(--color-brand)]">{item.text}</span>
+                  </a>
+                </li>
+              ))}
+            </ol>
+            <div class="h-px w-full bg-[var(--color-border)]"></div>
+            {hasFindings && (
+              <a href="#findings" class="text-[12px] leading-[1.9] text-[var(--color-brand)] hover:underline">今回わかったこと<br />次に試すこと</a>
+            )}
+            <p class="hidden whitespace-pre-line font-serif text-[13px] leading-[2] text-[var(--color-ink-muted)] lg:block">{ARTICLE_SIGNATURE.replace('。', '。\n')}</p>
+          </div>
+        </aside>
+      )}
+
+      <div class="min-w-0 max-w-[760px] flex-1">
+        <article class="prose max-w-none [&_h2]:scroll-mt-8 [&_h3]:scroll-mt-8 [&>*:first-child]:mt-0" set:html={html} />
+
+        <!-- 締めの一言と注意書き -->
+        <div class="mt-12 flex flex-col gap-6">
+          <p class="text-right font-serif text-[14px] text-[var(--color-brand)]">{ARTICLE_SIGNATURE}</p>
+          <p class="text-[11px] leading-[1.9] text-[var(--color-ink-muted)]">{ARTICLE_DISCLAIMER}</p>
+        </div>
+
+        <div class="mt-12 h-px w-full bg-[var(--color-border)]"></div>
+
+        <!-- 記録する人 -->
+        <div class="mt-12 flex flex-col gap-6 sm:flex-row sm:items-center sm:gap-[30px]">
+          <img src="/images/author-portrait.svg" alt="" width="150" height="154" class="h-[154px] w-[150px] shrink-0" />
+          <div class="flex flex-col gap-3">
+            <p class="eyebrow">{AUTHOR_PROFILE.label}</p>
+            <p class="whitespace-pre-line font-serif text-[20px] font-semibold leading-[1.6] text-[var(--color-ink)]">{AUTHOR_PROFILE.headline}</p>
+            <p class="text-[13px] leading-[2] text-[var(--color-ink-muted)]">{AUTHOR_PROFILE.bio}</p>
+            <a href="/about" class="text-[12px] text-[var(--color-brand)] hover:underline">このサイトについて →</a>
+          </div>
+        </div>
+
+        <!-- 一覧・テーマへの戻りリンク -->
+        <div class="mt-12 flex flex-col gap-3 pt-4 pb-[88px] text-[13px] text-[var(--color-brand)] sm:flex-row sm:justify-between">
+          <a href="/blog" class="hover:underline">← 実験ログの一覧へ</a>
+          {primaryCategory && <a href={categoryHref} class="hover:underline">「{primaryCategory}」を読む →</a>}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== この話のとなりに ===== -->
+  {neighbors.length > 0 && (
+    <section class="bg-[var(--color-sand)] px-6 py-[72px] md:px-24">
+      <div class="mx-auto max-w-[1000px]">
+        <div class="flex flex-col gap-4">
+          <p class="eyebrow">ALONG THE SAME PATH</p>
+          <h2 class="font-serif text-[26px] font-semibold text-[var(--color-ink)] sm:text-[32px]">この話のとなりに</h2>
+          <p class="text-[14px] text-[var(--color-ink-muted)]">お金、時間、小さな挑戦。どの入口からも、同じ暮らしへ。</p>
+        </div>
+
+        <div class="mt-9 grid gap-10 sm:grid-cols-2">
+          {neighbors.map((item: any) => {
+            const category = item.categories?.[0] ?? null;
+            return (
+              <a href={`/blog/${item.slug}`} class="group flex flex-col gap-[18px]">
+                <div class="aspect-[16/9] w-full overflow-hidden" style={`background-color: ${themeColor(category)}`}>
+                  {item.thumbnail && (
+                    <img src={item.thumbnail} alt="" loading="lazy" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]" />
+                  )}
+                </div>
+                {category && <p class="text-[11px] font-bold text-[var(--color-brand)]">{category}</p>}
+                <p class="font-serif text-[20px] font-semibold leading-[1.6] text-[var(--color-ink)] sm:text-[24px]">{item.title}</p>
+                <p class="line-clamp-2 text-[13px] leading-[1.9] text-[var(--color-ink-muted)]">{item.description}</p>
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] text-[var(--color-ink-muted)]">{formatDateDot(item.publishedAt)}</span>
+                  <span class="text-[12px] text-[var(--color-brand)] group-hover:underline">続きを読む →</span>
+                </div>
+              </a>
+            );
+          })}
+        </div>
+      </div>
+    </section>
   )}
-
-  {relatedPosts.length > 0 && (
-    <div class="mx-auto max-w-6xl px-6 pb-16">
-      <div class="max-w-3xl">
-        <h2 class="mb-6 text-xl font-bold text-[var(--color-ink)]">{post.mainTag}の記事</h2>
-        <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {relatedPosts.map((related: any) => <PostCard post={related} />)}
-        </div>
-      </div>
-    </div>
-  )}
-
-  <div class="mx-auto max-w-6xl px-6 pb-16 text-center">
-    <a href="/blog" class="text-sm font-medium text-[var(--color-brand)] hover:underline">ブログ一覧へ</a>
-  </div>
 </BaseLayout>
