@@ -1,11 +1,11 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import PostCard from '../../components/PostCard.astro';
-import CategoryFilter from '../../components/CategoryFilter.astro';
+import PostRow from '../../components/PostRow.astro';
 import Pagination from '../../components/Pagination.astro';
-import BlogSidebar from '../../components/BlogSidebar.astro';
-import { getAllPosts, getAllTags, getAllCategories } from '../../lib/notion';
-import { SITE } from '../../lib/site.config';
+import NoteBox from '../../components/NoteBox.astro';
+import { getAllPosts, getCategoryMeta } from '../../lib/notion';
+import { estimateReadMinutes } from '../../lib/format';
+import { SITE, THEMES, BLOG_PAGE, themeHref } from '../../lib/site.config';
 
 export async function getStaticPaths({ paginate }: any) {
   const posts = await getAllPosts();
@@ -13,47 +13,125 @@ export async function getStaticPaths({ paginate }: any) {
 }
 
 const { page } = Astro.props as any;
-const tags = await getAllTags();
-const categories = await getAllCategories();
-const popularPosts = (await getAllPosts()).slice(0, 5);
+const isFirstPage = page.currentPage === 1;
+const allPosts = await getAllPosts();
+const categoryMeta = await getCategoryMeta();
+
+// 「今日の読みはじめ」：各テーマの代表記事（未設定ならそのテーマの最初の記事）
+const paths = THEMES.map((theme) => {
+  const meta = categoryMeta.get(theme.name);
+  const themePosts = allPosts.filter((p) => p.categories.includes(theme.name));
+  const post =
+    (meta?.representativePageId && allPosts.find((p) => p.id === meta.representativePageId)) ||
+    themePosts[themePosts.length - 1];
+  return { theme, post };
+});
 ---
 
 <BaseLayout
-  title="ブログ一覧"
+  title={BLOG_PAGE.title}
   description={SITE.description}
-  canonicalPath={page.currentPage === 1 ? '/blog' : `/blog/${page.currentPage}`}
+  canonicalPath={isFirstPage ? '/blog' : `/blog/${page.currentPage}`}
 >
-  <div class="mx-auto max-w-6xl px-6 py-16">
-    <nav class="mb-6 text-sm text-[var(--color-ink-muted)]">
-      <a href="/" class="hover:text-[var(--color-brand)]">トップ</a>
-      <span class="mx-2">/</span>
-      <span>ブログ一覧</span>
-    </nav>
-
-    <div class="mb-10">
-      <h1 class="text-3xl font-bold text-[var(--color-ink)]">ブログ一覧</h1>
-    </div>
-
-    <div class="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_280px]">
-      <div class="min-w-0">
-        <div class="mb-10">
-          <CategoryFilter categories={categories} />
+  <!-- ===== ブログの見出し ===== -->
+  <section class="px-6 pt-[30px] pb-12 md:px-24">
+    <div class="mx-auto max-w-[1248px]">
+      <nav class="flex items-center gap-[14px] text-[11px] text-[var(--color-ink-muted)]" aria-label="パンくずリスト">
+        <a href="/" class="hover:text-[var(--color-brand)]">ホーム</a>
+        <span>／</span>
+        <span>{BLOG_PAGE.title}</span>
+      </nav>
+      <div class="mt-10 flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p class="eyebrow whitespace-pre">{BLOG_PAGE.eyebrow}</p>
+          <h1 class="mt-5 font-serif text-[44px] font-semibold leading-[1.3] text-[var(--color-ink)] sm:text-[56px]">{BLOG_PAGE.title}</h1>
         </div>
+        <div class="lg:w-[640px]">
+          <p class="whitespace-pre-line font-serif text-[20px] leading-[1.7] text-[var(--color-ink)] sm:text-[26px]">{BLOG_PAGE.headline}</p>
+          <p class="mt-4 whitespace-pre-line text-[13px] leading-[2] text-[var(--color-ink-muted)]">{BLOG_PAGE.lead}</p>
+        </div>
+      </div>
+    </div>
+  </section>
 
-        {page.data.length > 0 ? (
-          <div class="grid gap-6 sm:grid-cols-2">
-            {page.data.map((post: any) => <PostCard post={post} />)}
-          </div>
-        ) : (
-          <p class="rounded-2xl border border-dashed border-[var(--color-border)] p-10 text-center text-[var(--color-ink-muted)]">
-            記事がまだありません。
-          </p>
-        )}
+  <!-- ===== 今日の読みはじめ（3つのテーマ） ===== -->
+  {isFirstPage && (
+    <section id="reading-path" class="scroll-mt-6 bg-[var(--color-sand)] px-6 py-10 md:px-24">
+      <div class="mx-auto max-w-[1248px]">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p class="eyebrow whitespace-pre">READING PATH  /  今日の読みはじめ</p>
+          <p class="text-[12px] text-[var(--color-ink-muted)]">{BLOG_PAGE.pathNote}</p>
+        </div>
+        <div class="mt-4">
+          {paths.map(({ theme, post }) => (
+            <div class="grid grid-cols-[auto_1fr] items-center gap-x-6 gap-y-5 border-b border-[var(--color-border)] py-10 md:grid-cols-[56px_1fr_1.3fr_150px] md:gap-x-10">
+              <p class="font-serif text-[30px] text-[var(--color-brand)]">{theme.number}</p>
+              <div>
+                <p class="font-serif text-[22px] font-semibold text-[var(--color-ink)] sm:text-[24px]">{theme.pathTitle}</p>
+                <a href={themeHref(theme.name)} class="mt-2 inline-block text-[13px] font-medium text-[var(--color-brand)] hover:underline">{theme.name} →</a>
+              </div>
+              <div class="col-span-2 md:col-span-1">
+                <p class="text-[11px] text-[var(--color-ink-muted)]">{theme.pathLead}</p>
+                {post ? (
+                  <a href={`/blog/${post.slug}`} class="group mt-2 block">
+                    <p class="font-serif text-[18px] font-semibold leading-[1.6] text-[var(--color-ink)] group-hover:text-[var(--color-brand)] sm:text-[20px]">{post.title}</p>
+                    <p class="mt-2 text-[12px] text-[var(--color-brand)]">約{estimateReadMinutes(post.html)}分の記録を読む →</p>
+                  </a>
+                ) : (
+                  <p class="mt-2 text-[13px] text-[var(--color-ink-muted)]">記録は、これから増えていきます。</p>
+                )}
+              </div>
+              <img src={`/images/themes/path-${theme.key}.svg`} alt="" width="144" height="120" class="hidden md:block" />
+            </div>
+          ))}
+        </div>
+        <p class="mt-6 font-serif text-[14px] text-[var(--color-brand)]">{BLOG_PAGE.pathFooter}</p>
+      </div>
+    </section>
+  )}
 
-        <Pagination currentPage={page.currentPage} lastPage={page.lastPage} basePath="/blog" />
+  <!-- ===== 新しい記録から、読んでみる ===== -->
+  <section class="px-6 py-16 md:px-24">
+    <div class="mx-auto max-w-[1248px]">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p class="eyebrow">LATEST LOGS</p>
+          <h2 class="mt-4 font-serif text-[28px] font-semibold text-[var(--color-ink)] sm:text-[32px]">新しい記録から、読んでみる</h2>
+        </div>
+        <p class="text-[11px] text-[var(--color-ink-muted)]">全{page.total}件 / 新しい順</p>
       </div>
 
-      <BlogSidebar categories={categories} popularPosts={popularPosts} tags={tags} />
+      <p class="mt-6 text-[11px] text-[var(--color-ink-muted)]">カテゴリで探す</p>
+      <div class="mt-3 flex flex-wrap gap-3">
+        <span class="rounded-full bg-[var(--color-brand)] px-5 py-2 text-[12px] text-[var(--color-surface)]">すべて</span>
+        {THEMES.map((t) => (
+          <a href={themeHref(t.name)} class="rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-2 text-[12px] text-[var(--color-brand)] hover:border-[var(--color-brand)]">{t.name}</a>
+        ))}
+      </div>
+
+      <div class="mt-6">
+        {page.data.length > 0 ? (
+          page.data.map((post: any) => <PostRow post={post} />)
+        ) : (
+          <p class="rounded-[20px] border border-dashed border-[var(--color-border)] p-10 text-center text-[14px] text-[var(--color-ink-muted)]">記録は、これから増えていきます。</p>
+        )}
+      </div>
+
+      <Pagination currentPage={page.currentPage} lastPage={page.lastPage} basePath="/blog" />
+
+      <div class="mt-8 text-right">
+        <a href={isFirstPage ? '#reading-path' : '/blog#reading-path'} class="text-[12px] text-[var(--color-brand)] hover:underline">3つのテーマから、続きを探す ↑</a>
+      </div>
     </div>
-  </div>
+  </section>
+
+  {isFirstPage && BLOG_PAGE.noteTitle && (
+    <NoteBox
+      title={BLOG_PAGE.noteTitle}
+      status={BLOG_PAGE.noteStatus}
+      headline={BLOG_PAGE.noteHeadline}
+      body={BLOG_PAGE.noteBody}
+      foot={BLOG_PAGE.noteFoot}
+    />
+  )}
 </BaseLayout>
