@@ -23,11 +23,27 @@ export const NAV = [
 ];
 
 // 3つのテーマ（Notionのマスターカテゴリ名と完全に一致させてください）
+// color はテーマごとの淡い背景色（global.css の --color-theme-* と対応）
 export const THEMES = [
-  { name: '働き方とこれからのこと' },
-  { name: 'お金と暮らし' },
-  { name: '自分の小さなメディア' },
+  { name: '働き方とこれからのこと', color: 'var(--color-theme-work)' },
+  { name: 'お金と暮らし', color: 'var(--color-theme-money)' },
+  { name: '自分の小さなメディア', color: 'var(--color-theme-media)' },
 ];
+
+// テーマ名から背景色を取り出す（見つからなければ砂色）
+export function themeColor(name: string | null | undefined): string {
+  return THEMES.find((t) => t.name === name)?.color ?? 'var(--color-sand)';
+}
+
+// 記事ページの末尾に出す一言・注意書き・「記録する人」欄
+export const ARTICLE_SIGNATURE = '急がない。でも、止まらない。';
+export const ARTICLE_DISCLAIMER =
+  'このログは個人の考え方と体験の記録で、特定の金融商品や個別銘柄の購入を勧めるものではありません。契約や運用の判断が必要な場合は、条件を確認し、必要に応じて専門家に相談してください。';
+export const AUTHOR_PROFILE = {
+  label: '記録する人',
+  headline: '会社員を続けながら、\nこれからの働き方を試しています。',
+  bio: '50代、会社員。専門家ではありません。だからこそ、調べ、試し、迷った道筋まで共有します。時間と収入を、自分のペースで育てるための小さな作業机です。',
+};
 
 // お問い合わせフォーム（GoogleフォームのURL）。空欄の間はお問い合わせページに「準備中」と表示されます。
 export const CONTACT_FORM_URL = '';
