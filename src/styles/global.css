@@ -6,22 +6,40 @@
 @import "@fontsource/noto-sans-jp/700.css";
 
 /*
-  デザイン用のカラー・タイポグラフィのトークン。
-  ブランドカラー／ロゴが確定したら --color-brand 系だけ書き換えれば全体に反映されます。
+  デザイン用のカラー・タイポグラフィのトークン（2026年10月 Figmaデザイン準拠）。
+  旧トークン名（--color-brand など）も新しい色に置き換えてあるため、
+  まだ新デザインに移行していないページも自動的に新しい配色になります。
 */
 @theme {
   --font-sans: "Noto Sans JP", "Noto Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Noto Serif JP", "Hiragino Mincho ProN", "Yu Mincho", serif;
 
-  --color-paper: #faf9f7;
-  --color-surface: #ffffff;
-  --color-ink: #1c1d21;
-  --color-ink-muted: #64636b;
-  --color-border: #eceae6;
+  /* 背景 */
+  --color-paper: #f6f0e5;      /* ページ全体の生成り */
+  --color-sand: #ede2d2;       /* 帯状セクションの背景 */
+  --color-surface: #fffdf8;    /* カード */
+  --color-wine: #481822;       /* フッター等の濃い帯 */
 
-  --color-brand: #3d5a80;
-  --color-brand-dark: #2c4362;
-  --color-brand-soft: #eef2f6;
-  --color-accent: #c98a4b;
+  /* 文字 */
+  --color-ink: #392a27;
+  --color-ink-muted: #75645e;
+  --color-border: #cdbeb0;
+
+  /* アクセント */
+  --color-brand: #6e2636;      /* ボルドー（リンク・ボタン・ラベル） */
+  --color-brand-dark: #481822;
+  --color-brand-soft: #ede2d3; /* コールアウト背景 */
+  --color-accent: #c79a3b;     /* 見出し横の線・点 */
+
+  /* テーマ別の色（働き方／お金／メディア） */
+  --color-theme-work: #e7cdd0;
+  --color-theme-money: #e8d6a8;
+  --color-theme-media: #dde2d3;
+
+  /* フッター内の文字色 */
+  --color-on-wine: #fffdf8;
+  --color-on-wine-muted: #e7cdd0;
+  --color-on-wine-accent: #e8d6a8;
 }
 
 html {
@@ -32,6 +50,24 @@ body {
   font-family: var(--font-sans);
   background-color: var(--color-paper);
   color: var(--color-ink);
+}
+
+/* 英字ラベル＋金色の短い線（「ABOUT THIS EXPERIMENT」などの小見出し）。どのページでも使える共通部品。 */
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--color-brand);
+}
+
+.eyebrow::before {
+  content: "";
+  width: 28px;
+  height: 2px;
+  background-color: var(--color-accent);
 }
 
 .prose {
