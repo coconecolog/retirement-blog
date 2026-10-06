@@ -1,5 +1,7 @@
 ---
-import { formatDate } from '../lib/format';
+// 記事カード（テーマページ・タグ・執筆者ページの一覧で使う、縦長のカード）
+import { formatDateDot, estimateReadMinutes } from '../lib/format';
+import { themeColor } from '../lib/site.config';
 import type { Post } from '../lib/notion';
 
 export interface Props {
@@ -7,56 +9,25 @@ export interface Props {
 }
 
 const { post } = Astro.props;
-
-// 本文の文字数から読了時間を概算する（1分あたり約500文字の日本語読解速度を想定した簡易推定値）。
-function estimateReadMinutes(html: string): number {
-  const textLength = html.replace(/<[^>]*>/g, '').length;
-  return Math.max(1, Math.round(textLength / 500));
-}
-
-const readMinutes = estimateReadMinutes(post.html);
-// サイドバー・カテゴリページ同様、先頭のカテゴリだけをカード上に表示する。
 const category = post.categories[0] ?? null;
+const readMinutes = estimateReadMinutes(post.html);
 ---
 
 <a
   href={`/blog/${post.slug}`}
-  class="group flex flex-col overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] transition-shadow hover:shadow-lg hover:shadow-black/5"
+  class="group flex flex-col overflow-hidden rounded-[20px] bg-[var(--color-surface)] shadow-[0_10px_30px_0_rgba(72,24,34,0.07)] transition-shadow hover:shadow-[0_14px_36px_0_rgba(72,24,34,0.12)]"
 >
-  <div class="aspect-[16/9] w-full overflow-hidden bg-[var(--color-brand-soft)]">
-    {post.thumbnail ? (
-      <img
-        src={post.thumbnail}
-        alt={post.title}
-        loading="lazy"
-        class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-      />
-    ) : (
-      <div class="flex h-full w-full items-center justify-center text-[var(--color-brand)]/40">
-        <span class="text-sm font-medium">{'資産の守り方'}</span>
-      </div>
+  <div class="aspect-[16/9] w-full overflow-hidden" style={`background-color: ${themeColor(category)}`}>
+    {post.thumbnail && (
+      <img src={post.thumbnail} alt="" loading="lazy" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]" />
     )}
   </div>
-  <div class="flex flex-1 flex-col gap-3 p-6">
-    <div class="flex flex-wrap items-center gap-2 text-xs">
-      <span class="rounded-full bg-[var(--color-brand-soft)] px-2.5 py-0.5 font-bold text-[var(--color-brand-dark)]">
-        📝 ブログ記事
-      </span>
-      <span class="text-[var(--color-ink-muted)]">◷ 読了{readMinutes}分</span>
+  <div class="flex flex-1 flex-col p-6">
+    <p class="font-serif text-[20px] font-semibold leading-[1.7] text-[var(--color-ink)]">{post.title}</p>
+    <p class="mt-3 line-clamp-2 text-[13px] leading-[1.9] text-[var(--color-ink-muted)]">{post.description}</p>
+    <div class="mt-auto flex items-center justify-between pt-5">
+      <span class="text-[11px] text-[var(--color-ink-muted)]">{formatDateDot(post.publishedAt)} · 約{readMinutes}分</span>
+      <span class="text-[12px] text-[var(--color-brand)] group-hover:underline">続きを読む →</span>
     </div>
-
-    <div class="flex flex-wrap items-center gap-2 text-xs text-[var(--color-ink-muted)]">
-      {category && <span class="font-medium text-[var(--color-brand)]">{category}</span>}
-      <time datetime={post.publishedAt}>{formatDate(post.publishedAt)}</time>
-    </div>
-
-    <h3 class="line-clamp-2 text-lg font-bold leading-snug text-[var(--color-ink)] group-hover:text-[var(--color-brand)]">
-      {post.title}
-    </h3>
-    <p class="line-clamp-2 flex-1 text-sm text-[var(--color-ink-muted)]">{post.excerpt}</p>
-
-    <span class="mt-1 inline-flex w-fit items-center gap-1 rounded-full bg-[var(--color-brand)] px-4 py-1.5 text-xs font-bold text-white">
-      記事を読む →
-    </span>
   </div>
 </a>
