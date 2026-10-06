@@ -1,0 +1,30 @@
+---
+// 記事の横長1行（ブログトップの「新しい記録から、読んでみる」で使う）
+import { formatDateDot, estimateReadMinutes } from '../lib/format';
+import { themeColor } from '../lib/site.config';
+import type { Post } from '../lib/notion';
+
+export interface Props {
+  post: Post;
+}
+
+const { post } = Astro.props;
+const category = post.categories[0] ?? null;
+const readMinutes = estimateReadMinutes(post.html);
+---
+
+<a href={`/blog/${post.slug}`} class="group flex flex-col gap-4 border-b border-[var(--color-border)] py-6 sm:flex-row sm:items-center sm:gap-7">
+  <div class="aspect-[16/9] w-full shrink-0 overflow-hidden sm:w-[180px]" style={`background-color: ${themeColor(category)}`}>
+    {post.thumbnail && <img src={post.thumbnail} alt="" loading="lazy" class="h-full w-full object-cover" />}
+  </div>
+  <div class="min-w-0 flex-1">
+    {category && <p class="text-[11px] font-bold text-[var(--color-brand)]">{category}</p>}
+    <p class="mt-2 font-serif text-[19px] font-semibold leading-[1.6] text-[var(--color-ink)] group-hover:text-[var(--color-brand)] sm:text-[22px]">{post.title}</p>
+    <p class="mt-2 line-clamp-2 text-[13px] leading-[1.9] text-[var(--color-ink-muted)]">{post.description}</p>
+  </div>
+  <div class="flex shrink-0 items-center gap-4 text-[11px] text-[var(--color-ink-muted)] sm:flex-col sm:items-end sm:gap-3">
+    <span>{formatDateDot(post.publishedAt)}</span>
+    <span>約{readMinutes}分</span>
+    <span class="ml-auto text-[12px] text-[var(--color-brand)] group-hover:underline sm:ml-0">続きを読む →</span>
+  </div>
+</a>
