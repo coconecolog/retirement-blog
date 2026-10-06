@@ -1,0 +1,19 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { CONTACT_FORM_URL } from '../lib/site.config';
+---
+
+<BaseLayout title="お問い合わせ" description="50代から育てるポートフォリオへのお問い合わせ">
+  <section class="px-6 py-20 md:px-24">
+    <div class="mx-auto max-w-3xl">
+      <p class="eyebrow">CONTACT</p>
+      <h1 class="mt-4 font-serif text-[32px] font-semibold leading-[1.5] text-[var(--color-ink)] md:text-[38px]">お問い合わせ</h1>
+      <p class="mt-6 text-[16px] leading-[2] text-[var(--color-ink-muted)]">記事へのご感想や、ご質問はこちらからお寄せください。</p>
+      {CONTACT_FORM_URL ? (
+        <a href={CONTACT_FORM_URL} target="_blank" rel="noopener" class="mt-10 inline-flex h-[52px] items-center gap-2.5 rounded-full bg-[var(--color-brand)] px-6 text-[14px] font-medium text-[var(--color-surface)] hover:opacity-90">お問い合わせフォームを開く<span class="text-[16px]">→</span></a>
+      ) : (
+        <p class="mt-10 rounded-[28px] bg-[var(--color-surface)] p-8 text-[14px] text-[var(--color-ink-muted)]">お問い合わせフォームは準備中です。</p>
+      )}
+    </div>
+  </section>
+</BaseLayout>
