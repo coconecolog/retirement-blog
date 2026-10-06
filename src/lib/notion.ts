@@ -404,38 +404,89 @@ function heading4ToHtml(block: any): string {
 
 // コールアウトブロックの中で改行（Enter）を押して段落を追加すると、Notion上ではその段落は
 // コールアウトブロックの「子ブロック」として保存される（コールアウト自身のrich_textには含まれない）。
-// そのため、子ブロックがある場合はAPIから取得し、段落として追記する。
+// そのため、子ブロックがある場合はAPIから取得する。
 // ここでは段落・箇条書きなど、rich_textを持つ単純なブロックのみ対応する（表・画像等のネストは非対応）。
-async function calloutChildrenToHtml(notion: Client, blockId: string): Promise<string> {
+type CalloutChild = { type: string; html: string; text: string };
+
+async function fetchCalloutChildren(notion: Client, blockId: string): Promise<CalloutChild[]> {
   try {
     const res: any = await notion.blocks.children.list({ block_id: blockId, page_size: 100 });
-    const parts: string[] = [];
+    const items: CalloutChild[] = [];
     for (const child of res.results ?? []) {
       const childType = child.type;
       const richText = child[childType]?.rich_text;
       if (!richText) continue;
       const html = richTextToInlineHtml(richText);
-      if (html.trim()) parts.push(`<p>${html}</p>`);
+      const text = richText.map((t: any) => t.plain_text ?? '').join('').trim();
+      if (html.trim()) items.push({ type: childType, html, text });
     }
-    return parts.join('\n');
+    return items;
   } catch (err) {
     console.warn(`[notion] コールアウト内の続きの段落の取得に失敗しました: ${blockId}`, err);
-    return '';
+    return [];
   }
 }
 
-// Notionの「コールアウト」ブロックをMarkdownの引用（>）ではなく、独自のHTML（div.notion-callout）に変換する。
-// これにより、記事ページ側で「引用ブロック」と見た目を区別できるようにする（コールアウトは枠線・斜体なし）。
+// 箇条書き（・／1.）が続く部分は <ul>/<ol> にまとめ、それ以外は <p> にする。
+function calloutChildrenToHtml(children: CalloutChild[], paragraphClass = ''): string {
+  const parts: string[] = [];
+  let listTag: 'ul' | 'ol' | null = null;
+  const closeList = () => {
+    if (listTag) parts.push(`</${listTag}>`);
+    listTag = null;
+  };
+  for (const child of children) {
+    const nextListTag = child.type === 'bulleted_list_item' ? 'ul' : child.type === 'numbered_list_item' ? 'ol' : null;
+    if (nextListTag) {
+      if (listTag !== nextListTag) {
+        closeList();
+        parts.push(`<${nextListTag}>`);
+        listTag = nextListTag;
+      }
+      parts.push(`<li>${child.html}</li>`);
+    } else {
+      closeList();
+      parts.push(paragraphClass ? `<p class="${paragraphClass}">${child.html}</p>` : `<p>${child.html}</p>`);
+    }
+  }
+  closeList();
+  return parts.join('\n');
+}
+
+// Notionの「コールアウト」ブロックを、引用（>）ではなく独自のHTMLに変換する。
+// アイコン（絵文字）はデザイン上表示しない。背景色で2種類に振り分ける。
+//
+// ■ 色なし（デフォルト）→「メモ型」（左に金色の線）
+//   ・1行目だけ … その1行を本文として表示
+//   ・2行目以降あり（Enterで改行）… 1行目を小さなラベル、2行目以降を本文として表示
+//
+// ■ 黄色 →「今回わかったこと／次に試すこと」のまとめ型
+//   ・1行目 … 見出し（空欄なら「今回わかったこと」）
+//   ・箇条書き … わかったことのリスト
+//   ・「次に試すこと」とだけ書いた行 … 区切り線＋小見出し
+//   ・その後の段落 … 次に試すことの本文（明朝体・大きめ）
 async function calloutToHtml(notion: Client, block: any): Promise<string> {
   const callout = block.callout ?? {};
-  const icon = callout.icon;
-  const emoji = icon?.type === 'emoji' ? `${icon.emoji} ` : '';
+  const color: string = callout.color ?? 'default';
   const firstLineHtml = richTextToInlineHtml(callout.rich_text ?? []);
-  let bodyHtml = `<p>${emoji}${firstLineHtml}</p>`;
-  if (block.has_children) {
-    const childrenHtml = await calloutChildrenToHtml(notion, block.id);
-    if (childrenHtml) bodyHtml += `\n${childrenHtml}`;
+  const children = block.has_children ? await fetchCalloutChildren(notion, block.id) : [];
+
+  if (color.startsWith('yellow')) {
+    const title = firstLineHtml.trim() || '今回わかったこと';
+    const nextIndex = children.findIndex((c) => c.type === 'paragraph' && /^次に試すこと[：:]?$/.test(c.text));
+    const before = nextIndex >= 0 ? children.slice(0, nextIndex) : children;
+    const after = nextIndex >= 0 ? children.slice(nextIndex + 1) : [];
+    let html = `<p class="findings-eyebrow">TODAY'S FINDINGS</p>\n<p class="findings-title">${title}</p>\n`;
+    html += calloutChildrenToHtml(before);
+    if (nextIndex >= 0) {
+      html += `\n<p class="findings-next-label">次に試すこと</p>\n` + calloutChildrenToHtml(after, 'findings-next');
+    }
+    return `\n<div class="notion-callout notion-callout--findings" id="findings">\n${html}\n</div>\n\n`;
   }
+
+  const bodyHtml = [firstLineHtml.trim() ? `<p>${firstLineHtml}</p>` : '', calloutChildrenToHtml(children)]
+    .filter(Boolean)
+    .join('\n');
   return `\n<div class="notion-callout">\n${bodyHtml}\n</div>\n\n`;
 }
 
