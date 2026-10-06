@@ -1,0 +1,37 @@
+---
+// 「IN PROGRESS」の枠。左に見出し、右に本文。
+// html を渡すとNotionの本文をそのまま表示（1段落目が大きな明朝、最後の段落がボルドー）。
+export interface Props {
+  title: string;
+  status?: string;
+  headline?: string;
+  body?: string;
+  foot?: string;
+  html?: string;
+}
+
+const { title, status, headline, body, foot, html } = Astro.props;
+---
+
+<section class="px-6 pb-14 md:px-24">
+  <div class="mx-auto flex max-w-[1248px] flex-col gap-6 rounded-[24px] border border-[var(--color-border)] bg-[var(--color-surface)] p-8 md:flex-row md:gap-12">
+    <div class="md:w-[272px] md:shrink-0">
+      <p class="eyebrow">IN PROGRESS</p>
+      <p class="mt-4 font-serif text-[26px] font-semibold leading-[1.6] text-[var(--color-ink)]">{title}</p>
+      {status && (
+        <p class="mt-4 flex items-center gap-2 text-[11px] text-[var(--color-brand)]">
+          <span class="size-[7px] rounded-full bg-[var(--color-accent)]"></span>{status}
+        </p>
+      )}
+    </div>
+    {html ? (
+      <div class="note-body min-w-0 flex-1" set:html={html} />
+    ) : (
+      <div class="note-body min-w-0 flex-1">
+        {headline && <p>{headline}</p>}
+        {body && <p>{body}</p>}
+        {foot && <p>{foot}</p>}
+      </div>
+    )}
+  </div>
+</section>
