@@ -1,17 +1,30 @@
 ---
-import { SITE } from '../lib/site.config';
+import { SITE, SITE_DESCRIPTOR, NAV } from '../lib/site.config';
 ---
 
-<header class="sticky top-4 z-50 mt-4 px-6">
-  <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 rounded-2xl border border-black/5 bg-white/40 px-6 py-3 shadow-[0_8px_30px_-12px_rgba(0,0,0,0.15)] backdrop-blur-xl">
-    <a href="/" class="shrink-0 text-base font-bold tracking-tight text-[var(--color-ink)]">
-      {SITE.title}
+<header class="px-6 md:px-24">
+  <div class="mx-auto flex max-w-[1248px] items-center justify-between gap-6 border-b border-[var(--color-border)] py-5 md:h-[92px] md:py-0">
+    <a href="/" class="flex shrink-0 items-center gap-3">
+      <img src="/images/logo-mark.svg" alt="" width="42" height="42" class="size-[42px]" />
+      <span class="flex flex-col gap-0.5">
+        <span class="font-serif text-[15px] font-semibold text-[var(--color-brand)] sm:text-[18px]">{SITE.title}</span>
+        <span class="text-[9px] text-[var(--color-ink-muted)]">{SITE_DESCRIPTOR}</span>
+      </span>
     </a>
-    
-      <a href="/blog"
-      class="shrink-0 rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-    >
-      記事を読む
-    </a>
+
+    <nav class="hidden items-center gap-8 md:flex">
+      {NAV.map((item) => (
+        <a href={item.href} class="text-[13px] font-medium text-[var(--color-ink)] transition-colors hover:text-[var(--color-brand)]">{item.label}</a>
+      ))}
+      <a href="/contact" class="rounded-full border border-[var(--color-brand)] px-[18px] py-[10px] text-[12px] font-medium text-[var(--color-brand)] transition-colors hover:bg-[var(--color-brand)] hover:text-[var(--color-surface)]">お問い合わせ</a>
+    </nav>
   </div>
+
+  <!-- スマホ用：ナビを横並びで1行に表示 -->
+  <nav class="mx-auto flex max-w-[1248px] flex-wrap items-center gap-x-4 gap-y-2 py-3 md:hidden">
+    {NAV.map((item) => (
+      <a href={item.href} class="shrink-0 text-[12px] font-medium text-[var(--color-ink)]">{item.label}</a>
+    ))}
+    <a href="/contact" class="shrink-0 text-[12px] font-medium text-[var(--color-brand)]">お問い合わせ</a>
+  </nav>
 </header>
