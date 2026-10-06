@@ -12,11 +12,25 @@ export const SITE = {
   postsPerPage: 9,
 };
 
+// ヘッダーのサブタイトル（ロゴ下の小さな英字）
+export const SITE_DESCRIPTOR = 'TIME · MONEY · SMALL MEDIA';
+
+// ヘッダーのナビゲーション
 export const NAV = [
-  { label: 'トップ', href: '/' },
-  { label: 'ブログ', href: '/blog' },
-  { label: 'ABOUT', href: '/about' },
+  { label: '実験ログ', href: '/blog' },
+  { label: '3つのテーマ', href: '/#themes' },
+  { label: 'このサイトについて', href: '/about' },
 ];
+
+// 3つのテーマ（Notionのマスターカテゴリ名と完全に一致させてください）
+export const THEMES = [
+  { name: '働き方とこれからのこと' },
+  { name: 'お金と暮らし' },
+  { name: '自分の小さなメディア' },
+];
+
+// お問い合わせフォーム（GoogleフォームのURL）。空欄の間はお問い合わせページに「準備中」と表示されます。
+export const CONTACT_FORM_URL = '';
 
 // GA4 / Search Console / Clarity の計測ID。
 // 発行後に環境変数（.env / Cloudflare Pages の環境変数）で上書きしてください。
