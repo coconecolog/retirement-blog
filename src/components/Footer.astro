@@ -1,20 +1,43 @@
 ---
-import { SITE } from '../lib/site.config';
+import { SITE, THEMES } from '../lib/site.config';
 const year = new Date().getFullYear();
 ---
 
-<footer class="border-t border-[var(--color-border)] bg-[var(--color-surface)]">
-  <div class="mx-auto max-w-6xl px-6 py-12 text-sm text-[var(--color-ink-muted)]">
-    <div class="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-      <p class="font-semibold text-[var(--color-ink)]"><a href="/" class="hover:text-[var(--color-brand)]">{SITE.title}</a></p>
-      <nav class="flex flex-wrap gap-5">
-        <a href="/" class="hover:text-[var(--color-brand)]">トップ</a>
-        <a href="/blog" class="hover:text-[var(--color-brand)]">ブログ</a>
-        <a href="/about" class="hover:text-[var(--color-brand)]">ABOUT</a>
-        <a href="/privacy" class="hover:text-[var(--color-brand)]">個人情報の取り扱いについて</a>
-        <a href="/rss.xml" class="hover:text-[var(--color-brand)]">RSS</a>
-      </nav>
+<footer class="bg-[var(--color-wine)] px-6 pt-[58px] pb-8 md:px-24">
+  <div class="mx-auto flex max-w-[1248px] flex-col gap-11">
+    <div class="flex flex-col gap-10 md:flex-row md:items-start md:justify-between">
+      <div class="flex max-w-[480px] flex-col gap-4">
+        <a href="/" class="flex items-center gap-3">
+          <span class="size-2 shrink-0 rounded-full bg-[var(--color-accent)]"></span>
+          <span class="font-serif text-[21px] font-semibold text-[var(--color-on-wine)]">{SITE.title}</span>
+        </a>
+        <p class="text-[12px] leading-[1.9] text-[var(--color-on-wine-muted)]">自分時間と暮らしのポートフォリオを、少しずつ。</p>
+        <p class="font-serif text-[14px] leading-[1.9] text-[var(--color-on-wine-accent)]">老後に向けた「最後の攻め」と、資産の「守り方」を探る。</p>
+      </div>
+
+      <div class="flex gap-16">
+        <div class="flex flex-col gap-3">
+          <p class="text-[10px] text-[var(--color-on-wine-accent)]">READ</p>
+          <a href="/blog" class="text-[12px] text-[var(--color-on-wine)] hover:underline">実験ログ</a>
+          {THEMES.map((theme) => (
+            <a href={`/blog/category/${encodeURIComponent(theme.name)}`} class="text-[12px] text-[var(--color-on-wine)] hover:underline">{theme.name}</a>
+          ))}
+        </div>
+        <div class="flex flex-col gap-3">
+          <p class="text-[10px] text-[var(--color-on-wine-accent)]">ABOUT</p>
+          <a href="/about" class="text-[12px] text-[var(--color-on-wine)] hover:underline">このサイトについて</a>
+          <a href="/contact" class="text-[12px] text-[var(--color-on-wine)] hover:underline">お問い合わせ</a>
+        </div>
+      </div>
     </div>
-    <p class="mt-8 text-xs text-[var(--color-ink-muted)]">© {year} {SITE.title}. All rights reserved.</p>
+
+    <div class="h-px w-full bg-[var(--color-on-wine)] opacity-[0.18]"></div>
+
+    <div class="flex flex-col gap-3 text-[10px] text-[var(--color-on-wine-muted)] sm:flex-row sm:justify-between">
+      <p>© {year} {SITE.title}</p>
+      <div class="flex gap-6">
+        <a href="/privacy" class="hover:underline">プライバシーポリシー</a>
+      </div>
+    </div>
   </div>
 </footer>
