@@ -2,7 +2,7 @@
 export interface Props {
   currentPage: number;
   lastPage: number;
-  basePath: string; // 例: "/blog" または "/blog/tag/投資"
+  basePath: string; // 例: "/blog" または "/blog/category/お金と暮らし"
 }
 
 const { currentPage, lastPage, basePath } = Astro.props;
@@ -11,13 +11,13 @@ const nextHref = currentPage < lastPage ? `${basePath}/${currentPage + 1}` : nul
 ---
 
 {lastPage > 1 && (
-  <nav class="mt-12 flex items-center justify-between border-t border-[var(--color-border)] pt-6">
+  <nav class="mt-10 flex items-center justify-between text-[13px]" aria-label="ページ送り">
     {prevHref ? (
-      <a href={prevHref} class="text-sm font-medium text-[var(--color-brand)] hover:underline">← 前のページ</a>
+      <a href={prevHref} class="rounded-full border border-[var(--color-brand)] px-5 py-2 text-[var(--color-brand)] hover:bg-[var(--color-brand)] hover:text-[var(--color-surface)]">← 新しい記録</a>
     ) : <span></span>}
-    <span class="text-sm text-[var(--color-ink-muted)]">{currentPage} / {lastPage}</span>
+    <span class="text-[12px] text-[var(--color-ink-muted)]">{currentPage} / {lastPage}</span>
     {nextHref ? (
-      <a href={nextHref} class="text-sm font-medium text-[var(--color-brand)] hover:underline">次のページ →</a>
+      <a href={nextHref} class="rounded-full border border-[var(--color-brand)] px-5 py-2 text-[var(--color-brand)] hover:bg-[var(--color-brand)] hover:text-[var(--color-surface)]">前の記録 →</a>
     ) : <span></span>}
   </nav>
 )}
