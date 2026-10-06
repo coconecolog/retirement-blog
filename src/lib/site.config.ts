@@ -23,16 +23,98 @@ export const NAV = [
 ];
 
 // 3つのテーマ（Notionのマスターカテゴリ名と完全に一致させてください）
-// color はテーマごとの淡い背景色（global.css の --color-theme-* と対応）
-export const THEMES = [
-  { name: '働き方とこれからのこと', color: 'var(--color-theme-work)' },
-  { name: 'お金と暮らし', color: 'var(--color-theme-money)' },
-  { name: '自分の小さなメディア', color: 'var(--color-theme-media)' },
+// 3つのテーマの表示内容。name は Notionのマスターカテゴリ名と完全に一致させてください。
+// color：テーマの淡い背景色／images：public/images/themes/ 内のイラスト
+export type Theme = {
+  key: 'work' | 'money' | 'media';
+  name: string;
+  number: string;
+  en: string;
+  color: string;
+  // テーマページ冒頭
+  tagline: string;
+  intro: string;
+  caption: string;
+  startHereNote: string;
+  // 他のテーマページの「となりの道も、歩いてみる」に出す紹介文
+  blurb: string;
+  // ブログトップの「今日の読みはじめ」
+  pathTitle: string;
+  pathLead: string;
+};
+
+export const THEMES: Theme[] = [
+  {
+    key: 'work',
+    name: '働き方とこれからのこと',
+    number: '01',
+    en: 'WORK & LIFE',
+    color: 'var(--color-theme-work)',
+    tagline: '働くことと、生きること。そのあいだに、私の余白を。',
+    intro: '週5日・8時間を当たり前にしてきた毎日から、少しずつ距離を置いてみる。辞めるか、続けるかを急いで決めずに、これからの時間と暮らしを整える記録です。',
+    caption: '急がない。でも、止まらない。',
+    startHereNote: '大きな決断より、小さな一歩から。',
+    blurb: '暮らしの輪郭が見えたら、働く時間も。辞めるか続けるかの前に、残したい余白を考えます。',
+    pathTitle: '働く時間を、見つめる。',
+    pathLead: 'まず、いつもの一週間に余白を。',
+  },
+  {
+    key: 'money',
+    name: 'お金と暮らし',
+    number: '02',
+    en: 'MONEY & LIFE',
+    color: 'var(--color-theme-money)',
+    tagline: '増やす話の前に、いまの暮らしの現在地から。',
+    intro: '気づけば積み上がってきた資産。ここから戦略的になるために、基礎から学んでいきます。残すお金、使いたいお金、試すためのお金を、私の暮らしの言葉で捉え直す記録です。',
+    caption: '増やす前に、まず並べてみる。',
+    startHereNote: '金額を評価するより、置き場所を知ることから。',
+    blurb: '働く時間を考えたら、暮らしを支えるお金のことも。増やす前に、いまの置き場所から。',
+    pathTitle: '暮らしのお金を、整える。',
+    pathLead: '時間を変えたくなったら、お金の現在地へ。',
+  },
+  {
+    key: 'media',
+    name: '自分の小さなメディア',
+    number: '03',
+    en: 'MY SMALL MEDIA',
+    color: 'var(--color-theme-media)',
+    tagline: '経験や好きなことに、私だけの小さな居場所を。',
+    intro: '詳しくなくても、AIと話しながらなら一歩ずつ。作ってみたこと、困ったこと、直してみたことを、自分のペースで残します。速さや完成度より、自分の声が残る場所を育てる記録です。',
+    caption: '小さく開いて、少しずつ育てる。',
+    startHereNote: '全部わかってから、でなくてもいい。',
+    blurb: '経験や好きなことを、小さな場所に置いてみる。自分の声が残る発信を、少しずつ。',
+    pathTitle: '自分の居場所を、つくる。',
+    pathLead: 'できた余白で、小さな発信を試してみる。',
+  },
 ];
+
+export function findTheme(name: string | null | undefined): Theme | undefined {
+  return THEMES.find((t) => t.name === name);
+}
+
+export function themeHref(name: string): string {
+  return `/blog/category/${encodeURIComponent(name)}`;
+}
+
+// ブログトップの文言
+export const BLOG_PAGE = {
+  eyebrow: 'BLOG  /  途中を綴る、実験ログ',
+  title: 'ブログ',
+  headline: '時間、お金、私の居場所。\n暮らしの問いを、ひとつずつ試してみる。',
+  lead: '成功も、失敗も、まだ途中のことも。3つのテーマを行き来しながら、\n自分時間と暮らしのポートフォリオを育てる読みものです。',
+  pathNote: '順に読んでも、気になる問いからでも。',
+  pathFooter: '働き方からお金へ。お金から小さな挑戦へ。ひとつの暮らしを、違う角度から眺めます。',
+  // 「IN PROGRESS」の枠（空欄にすると非表示）
+  noteTitle: '編集の余白メモ',
+  noteStatus: '試しているところ',
+  noteHeadline: '正解を急ぐより、途中の私を残しておく。',
+  noteBody: 'お金のノートを開く日も、サイトがうまく表示されない日も、同じ暮らしの続き。読み返したときに、自分が何を考えていたかがわかるように。小さな気づきから、また次の実験を始めます。',
+  noteFoot: 'このブログの約束：教える人ではなく、試している本人として書く。',
+};
 
 // テーマ名から背景色を取り出す（見つからなければ砂色）
 export function themeColor(name: string | null | undefined): string {
-  return THEMES.find((t) => t.name === name)?.color ?? 'var(--color-sand)';
+  return findTheme(name)?.color ?? 'var(--color-sand)';
 }
 
 // 記事ページの末尾に出す一言・注意書き・「記録する人」欄
