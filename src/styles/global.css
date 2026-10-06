@@ -365,3 +365,31 @@ body {
     padding: 14px 16px;
   }
 }
+
+/* ===== 「IN PROGRESS」枠の本文 ===== */
+.note-body p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 2;
+  color: var(--color-ink-muted);
+}
+
+.note-body p + p {
+  margin-top: 14px;
+}
+
+.note-body p:first-child {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  line-height: 1.7;
+  color: var(--color-ink);
+}
+
+.note-body p:last-child:not(:first-child) {
+  color: var(--color-brand);
+}
+
+.note-body a {
+  color: var(--color-brand);
+  text-decoration: underline;
+}
