@@ -70,81 +70,245 @@ body {
   background-color: var(--color-accent);
 }
 
+/* ===== 本文（Notionから変換したHTML）の共通スタイル ===== */
 .prose {
   --tw-prose-body: var(--color-ink);
   --tw-prose-headings: var(--color-ink);
   --tw-prose-links: var(--color-brand);
   --tw-prose-bold: var(--color-ink);
+  --tw-prose-bullets: var(--color-accent);
+  --tw-prose-counters: var(--color-accent);
   --tw-prose-quotes: var(--color-ink-muted);
   --tw-prose-quote-borders: var(--color-border);
+  --tw-prose-hr: var(--color-border);
   --tw-prose-code: var(--color-brand-dark);
+  --tw-prose-captions: var(--color-ink-muted);
+  font-size: 17px;
+  line-height: 2.15;
 }
 
-/* Notionの「見出し2」（H2）ブロック用。左に太めの縦線を入れたデザイン。 */
+@media (max-width: 639px) {
+  .prose {
+    font-size: 16px;
+    line-height: 2;
+  }
+}
+
+.prose p {
+  margin: 1.4em 0;
+}
+
+.prose a {
+  color: var(--color-brand);
+  text-underline-offset: 3px;
+}
+
+/* 見出し2：「NOTE 01」のような英字ラベル＋明朝の見出し。番号は記事内で自動で振られる。 */
+.prose {
+  counter-reset: note;
+}
+
 .prose h2 {
-  margin-top: 2.5em;
-  padding-top: 0.15em;
-  padding-bottom: 0.15em;
-  padding-left: 1rem;
-  border-left: 4px solid var(--color-ink);
-  font-size: 1.5em;
-  font-weight: 800;
-  line-height: 1.4;
+  counter-increment: note;
+  margin: 3.3em 0 1.4em;
+  font-family: var(--font-serif);
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.6;
+  color: var(--color-ink);
 }
 
-/* Notionの「見出し3」（H3）ブロック用。下に短いグラデーションの下線を入れたデザイン。 */
-.prose h3 {
-  position: relative;
-  display: inline-block;
-  margin-top: 2em;
-  padding-bottom: 0.6em;
-  font-size: 1.15em;
+.prose h2::before {
+  content: "NOTE " counter(note, decimal-leading-zero);
+  display: block;
+  margin-bottom: 16px;
+  padding-left: 38px;
+  background: linear-gradient(var(--color-accent), var(--color-accent)) no-repeat left center / 28px 2px;
+  font-family: var(--font-sans);
+  font-size: 11px;
   font-weight: 700;
-  line-height: 1.5;
+  line-height: 1.2;
+  color: var(--color-brand);
 }
 
-.prose h3::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 100%;
-  height: 4px;
-  border-radius: 9999px;
-  background: linear-gradient(to right, var(--color-ink), #f5f5f5);
+@media (max-width: 639px) {
+  .prose h2 {
+    font-size: 23px;
+  }
 }
-/* Notionの「コールアウト」ブロック用。引用（blockquote）とは違い、枠線・斜体なしの背景ボックス表示にする。 */
+
+/* 見出し3：明朝の小見出し */
+.prose h3 {
+  margin: 2.4em 0 0.9em;
+  font-family: var(--font-serif);
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.6;
+  color: var(--color-ink);
+}
+
+/* Notionの「見出し4」ブロック用：ボルドーの小さな見出し */
+.prose h4.notion-heading-4 {
+  margin: 2em 0 0.6em;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.7;
+  color: var(--color-brand);
+}
+
+.prose ul > li::marker {
+  color: var(--color-accent);
+}
+
+.prose blockquote {
+  border-left: 2px solid var(--color-border);
+  padding-left: 1.25em;
+  font-family: var(--font-serif);
+  font-style: normal;
+  color: var(--color-ink-muted);
+}
+
+.prose blockquote p:first-of-type::before,
+.prose blockquote p:last-of-type::after {
+  content: none;
+}
+
+/* ===== コールアウト（色なし）：メモ型 ===== */
 .prose .notion-callout {
-  margin: 1.75em 0;
-  padding: 1rem 1.25rem;
-  border-radius: 0.75rem;
+  margin: 2em 0;
+  padding: 24px 28px;
+  border-left: 3px solid var(--color-accent);
   background-color: var(--color-brand-soft);
 }
 
 .prose .notion-callout p {
   margin: 0;
-  font-style: normal;
+  font-family: var(--font-serif);
+  font-size: 18px;
+  line-height: 1.9;
   color: var(--color-ink);
 }
 
 .prose .notion-callout p + p {
-  margin-top: 0.75em;
+  margin-top: 0.6em;
 }
 
-/* Notionの画像ブロック（figure/figcaption）用。 */
+/* 2行以上あるときは、1行目を小さなラベルにする */
+.prose .notion-callout:not(.notion-callout--findings) > p:first-child:not(:only-child) {
+  margin-bottom: 12px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--color-brand);
+}
+
+.prose .notion-callout ul,
+.prose .notion-callout ol {
+  margin: 0.6em 0 0;
+}
+
+/* ===== コールアウト（黄色）：今回わかったこと／次に試すこと ===== */
+.prose .notion-callout--findings {
+  margin: 3em 0;
+  padding: 36px;
+  border-left: none;
+  background-color: var(--color-sand);
+  scroll-margin-top: 24px;
+}
+
+@media (max-width: 639px) {
+  .prose .notion-callout--findings {
+    padding: 28px 22px;
+  }
+}
+
+.prose .notion-callout--findings p {
+  font-family: var(--font-sans);
+  font-size: 15px;
+}
+
+.prose .notion-callout--findings .findings-eyebrow {
+  padding-left: 38px;
+  background: linear-gradient(var(--color-accent), var(--color-accent)) no-repeat left center / 28px 2px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-brand);
+}
+
+.prose .notion-callout--findings .findings-title {
+  margin-top: 28px;
+  font-family: var(--font-serif);
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.prose .notion-callout--findings ul {
+  margin: 28px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.prose .notion-callout--findings li {
+  position: relative;
+  margin: 0;
+  padding-left: 19px;
+  font-size: 15px;
+  line-height: 1.9;
+}
+
+.prose .notion-callout--findings li + li {
+  margin-top: 16px;
+}
+
+.prose .notion-callout--findings li::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 9999px;
+  background-color: var(--color-accent);
+}
+
+.prose .notion-callout--findings .findings-next-label {
+  margin-top: 28px;
+  padding-top: 28px;
+  border-top: 1px solid var(--color-border);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-brand);
+}
+
+.prose .notion-callout--findings .findings-next {
+  margin-top: 20px;
+  font-family: var(--font-serif);
+  font-size: 20px;
+  line-height: 1.9;
+}
+
+.prose .notion-callout--findings .findings-next + .findings-next {
+  margin-top: 0;
+}
+
+/* ===== 画像（figure/figcaption） ===== */
 .prose .notion-figure {
-  margin: 2em 0;
+  margin: 2.4em 0;
 }
 
 .prose .notion-figure img {
   width: 100%;
-  border-radius: 1rem;
+  margin: 0;
 }
 
 .prose .notion-figure figcaption {
-  margin-top: 0.6em;
+  margin-top: 16px;
   text-align: center;
-  font-size: 0.875em;
+  font-size: 12px;
+  line-height: 1.7;
   color: var(--color-ink-muted);
 }
 
@@ -153,40 +317,51 @@ body {
   text-decoration: underline;
 }
 
-/* Notionの「見出し4」ブロック用。左に縦線を入れたデザイン。 */
-.prose h4.notion-heading-4 {
-  margin-top: 1.75em;
-  margin-bottom: 0.75em;
-  padding-left: 0.75rem;
-  border-left: 4px solid var(--color-brand);
-  font-size: 1.05em;
-  line-height: 1.5;
-}
-
-/* Notionの「表（テーブル）」ブロック用。 */
+/* ===== 表 ===== */
 .prose table.notion-table {
   width: 100%;
-  margin: 1.75em 0;
+  margin: 2em 0;
   border-collapse: collapse;
-  font-size: 0.9em;
+  font-size: 13px;
+  line-height: 1.8;
 }
 
 .prose table.notion-table th,
 .prose table.notion-table td {
-  border: 1px solid var(--color-border);
-  padding: 0.6em 0.9em;
+  padding: 18px 20px;
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-ink);
   text-align: left;
   vertical-align: top;
-  font-weight: 700;
-}
-
-.prose table.notion-table td {
   font-weight: 400;
 }
 
-/* 列の見出し（thead）と行の見出し（各行の1列目）は同じ背景色にする。 */
-.prose table.notion-table thead th,
-.prose table.notion-table tbody th[scope="row"] {
+/* 列の見出し（thead）は砂色の背景、行の見出し（各行の1列目）はボルドーの文字 */
+.prose table.notion-table thead th {
   background-color: var(--color-brand-soft);
-  color: var(--color-ink);
+  font-weight: 700;
+}
+
+.prose table.notion-table thead th:first-child,
+.prose table.notion-table tbody th[scope="row"] {
+  color: var(--color-brand);
+}
+
+.prose table.notion-table tbody th[scope="row"] {
+  font-weight: 500;
+}
+
+@media (max-width: 639px) {
+  .prose table.notion-table {
+    display: block;
+    overflow-x: auto;
+  }
+
+  .prose table.notion-table th,
+  .prose table.notion-table td {
+    min-width: 8em;
+    padding: 14px 16px;
+  }
 }
