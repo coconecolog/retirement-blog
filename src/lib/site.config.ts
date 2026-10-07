@@ -17,8 +17,7 @@ export const SITE_DESCRIPTOR = 'TIME · MONEY · SMALL MEDIA';
 
 // ヘッダーのナビゲーション
 export const NAV = [
-  { label: '実験ログ', href: '/blog' },
-  { label: '3つのテーマ', href: '/#themes' },
+  { label: 'ブログ', href: '/blog' },
   { label: 'このサイトについて', href: '/about' },
 ];
 
@@ -26,8 +25,11 @@ export const NAV = [
 // 3つのテーマの表示内容。name は Notionのマスターカテゴリ名と完全に一致させてください。
 // color：テーマの淡い背景色／images：public/images/themes/ 内のイラスト
 export type Theme = {
+  // URLに使う英字（/blog/category/money など）
   key: 'work' | 'money' | 'media';
   name: string;
+  // このテーマとして扱う、Notionの旧カテゴリ名
+  aliases: string[];
   number: string;
   en: string;
   // トップの「3つの道」カードの表示（\n で改行）
@@ -49,6 +51,7 @@ export const THEMES: Theme[] = [
   {
     key: 'work',
     name: '働き方とこれからのこと',
+    aliases: [],
     number: '01',
     en: 'WORK & LIFE',
     cardTitle: '働き方と\nこれからのこと',
@@ -64,6 +67,7 @@ export const THEMES: Theme[] = [
   {
     key: 'money',
     name: 'お金と暮らし',
+    aliases: ['銘柄選定・分析', '口座・ツール活用', '戦略・資産配分'],
     number: '02',
     en: 'MONEY & LIFE',
     cardTitle: 'お金と暮らし',
@@ -79,6 +83,7 @@ export const THEMES: Theme[] = [
   {
     key: 'media',
     name: '自分の小さなメディア',
+    aliases: [],
     number: '03',
     en: 'MY SMALL MEDIA',
     cardTitle: '自分の小さな\nメディア',
@@ -97,8 +102,15 @@ export function findTheme(name: string | null | undefined): Theme | undefined {
   return THEMES.find((t) => t.name === name);
 }
 
+// Notionのカテゴリ名（旧カテゴリ名を含む）を、3つのテーマ名にそろえる。どれにも当てはまらなければそのまま。
+export function normalizeCategory(name: string): string {
+  return THEMES.find((t) => t.name === name || t.aliases.includes(name))?.name ?? name;
+}
+
+// テーマページのURL（英字）。テーマ以外のカテゴリ名ならブログトップへ。
 export function themeHref(name: string): string {
-  return `/blog/category/${encodeURIComponent(name)}`;
+  const theme = findTheme(name);
+  return theme ? `/blog/category/${theme.key}` : '/blog';
 }
 
 // ブログトップの文言
