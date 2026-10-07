@@ -74,71 +74,59 @@ const breadcrumbJsonLd = {
   ogImage={`/og/${post.slug}.png`}
   jsonLd={[articleJsonLd, breadcrumbJsonLd]}
 >
-  <!-- ===== 記事の冒頭 ===== -->
-  <section class="px-6 pt-[30px] pb-12 md:px-24 md:pb-16">
-    <div class="mx-auto max-w-[1248px]">
-      <nav class="flex flex-wrap items-center gap-[14px] text-[11px] text-[var(--color-ink-muted)]" aria-label="パンくずリスト">
-        <a href="/" class="hover:text-[var(--color-brand)]">ホーム</a>
-        <span>／</span>
-        <a href="/blog" class="hover:text-[var(--color-brand)]">ブログ</a>
-        {primaryCategory && (
-          <>
-            <span>／</span>
-            <a href={categoryHref} class="hover:text-[var(--color-brand)]">{primaryCategory}</a>
-          </>
-        )}
-      </nav>
-
-      <div class="mt-12 flex flex-col items-center gap-6 text-center md:mt-14">
-        <p class="eyebrow whitespace-pre">{primaryCategory ? `${primaryCategory}  /  実験ログ` : '実験ログ'}</p>
-        <h1 class="max-w-[980px] font-serif text-[30px] font-semibold leading-[1.55] text-[var(--color-ink)] sm:text-[38px] lg:text-[46px]">{post.title}</h1>
-        {post.summary && (
-          <p class="max-w-[760px] whitespace-pre-line text-[15px] leading-[2] text-[var(--color-ink-muted)] sm:text-[17px]">{post.summary}</p>
-        )}
-        <div class="flex flex-wrap items-center justify-center gap-4 text-[12px] text-[var(--color-ink-muted)]">
-          <span class="text-[var(--color-ink)]">{authorName}</span>
-          <span class="size-[3px] rounded-full bg-[var(--color-accent)]"></span>
-          <time datetime={post.publishedAt}>{formatDateDot(post.publishedAt)}</time>
-          <span class="size-[3px] rounded-full bg-[var(--color-accent)]"></span>
-          <span>約{readMinutes}分で読めます</span>
-        </div>
-      </div>
-
-      {post.thumbnail && (
-        <div class="mx-auto mt-12 max-w-[760px] md:mt-14">
-          <img src={post.thumbnail} alt="" class="aspect-[16/9] w-full object-cover" />
-        </div>
+  <!-- ===== パンくず ===== -->
+  <div class="px-6 pt-[30px] md:px-24">
+    <nav class="mx-auto flex max-w-[1004px] flex-wrap items-center gap-[14px] text-[11px] text-[var(--color-ink-muted)]" aria-label="パンくずリスト">
+      <a href="/" class="hover:text-[var(--color-brand)]">ホーム</a>
+      <span>／</span>
+      <a href="/blog" class="hover:text-[var(--color-brand)]">ブログ</a>
+      {primaryCategory && (
+        <>
+          <span>／</span>
+          <a href={categoryHref} class="hover:text-[var(--color-brand)]">{primaryCategory}</a>
+        </>
       )}
-    </div>
-  </section>
+    </nav>
+  </div>
 
-  <!-- ===== 本文エリア（左：目次／右：本文） ===== -->
+  <!-- ===== 記事（左：冒頭＋本文／右：目次） ===== -->
   <section class="px-6 md:px-24">
-    <div class="mx-auto flex max-w-[1248px] flex-col gap-10 lg:flex-row lg:gap-[54px]">
-      {toc.length > 0 && (
-        <aside class="lg:w-[190px] lg:shrink-0">
-          <div class="flex flex-col gap-6 pt-1 lg:sticky lg:top-8">
+    <div class="mx-auto flex max-w-[1004px] flex-col lg:flex-row lg:items-start lg:gap-[54px]">
+      <div class="min-w-0 max-w-[760px] flex-1">
+        <!-- 冒頭（本文と同じ幅） -->
+        <header class="flex flex-col items-center gap-6 pt-12 pb-12 text-center md:pt-14">
+          <p class="eyebrow whitespace-pre">{primaryCategory ? `${primaryCategory}  /  実験ログ` : '実験ログ'}</p>
+          <h1 class="font-serif text-[28px] font-semibold leading-[1.55] text-[var(--color-ink)] sm:text-[36px] lg:text-[40px]">{post.title}</h1>
+          {post.summary && (
+            <p class="whitespace-pre-line text-[15px] leading-[2] text-[var(--color-ink-muted)] sm:text-[17px]">{post.summary}</p>
+          )}
+          <div class="flex flex-wrap items-center justify-center gap-4 text-[12px] text-[var(--color-ink-muted)]">
+            <span class="text-[var(--color-ink)]">{authorName}</span>
+            <span class="size-[3px] rounded-full bg-[var(--color-accent)]"></span>
+            <time datetime={post.publishedAt}>{formatDateDot(post.publishedAt)}</time>
+            <span class="size-[3px] rounded-full bg-[var(--color-accent)]"></span>
+            <span>約{readMinutes}分で読めます</span>
+          </div>
+        </header>
+
+        <!-- スマホ用の目次（本文の前に表示） -->
+        {toc.length > 0 && (
+          <div class="mb-10 border-y border-[var(--color-border)] py-6 lg:hidden">
             <p class="eyebrow">このログの道順</p>
-            <ol class="flex flex-col gap-6">
+            <ol class="mt-4 flex flex-col gap-3">
               {toc.map((item, i) => (
                 <li>
-                  <a href={`#${item.id}`} class="group flex items-start gap-3">
+                  <a href={`#${item.id}`} class="flex items-start gap-3">
                     <span class="pt-[5px] text-[11px] leading-none text-[var(--color-accent)]">{String(i + 1).padStart(2, '0')}</span>
-                    <span class="text-[12px] leading-[1.9] text-[var(--color-ink-muted)] group-hover:text-[var(--color-brand)]">{item.text}</span>
+                    <span class="text-[13px] leading-[1.8] text-[var(--color-ink-muted)]">{item.text}</span>
                   </a>
                 </li>
               ))}
             </ol>
-            <div class="h-px w-full bg-[var(--color-border)]"></div>
-            {hasFindings && (
-              <a href="#findings" class="text-[12px] leading-[1.9] text-[var(--color-brand)] hover:underline">今回わかったこと<br />次に試すこと</a>
-            )}
-            <p class="hidden whitespace-pre-line font-serif text-[13px] leading-[2] text-[var(--color-ink-muted)] lg:block">{ARTICLE_SIGNATURE.replace('。', '。\n')}</p>
+            {hasFindings && <a href="#findings" class="mt-4 inline-block text-[12px] text-[var(--color-brand)] underline">今回わかったこと・次に試すこと</a>}
           </div>
-        </aside>
-      )}
+        )}
 
-      <div class="min-w-0 max-w-[760px] flex-1">
         <article class="prose max-w-none [&_h2]:scroll-mt-8 [&_h3]:scroll-mt-8 [&>*:first-child]:mt-0" set:html={html} />
 
         <!-- 締めの一言と注意書き -->
@@ -166,6 +154,30 @@ const breadcrumbJsonLd = {
           {primaryCategory && <a href={categoryHref} class="hover:underline">「{primaryCategory}」を読む →</a>}
         </div>
       </div>
+
+      <!-- 右：目次（パソコンのみ。スクロールしても付いてくる） -->
+      {toc.length > 0 && (
+        <aside class="hidden w-[190px] shrink-0 self-stretch pt-12 md:pt-14 lg:block">
+          <div class="sticky top-8 flex flex-col gap-6 pt-1">
+            <p class="eyebrow">このログの道順</p>
+            <ol class="flex flex-col gap-6">
+              {toc.map((item, i) => (
+                <li>
+                  <a href={`#${item.id}`} class="group flex items-start gap-3">
+                    <span class="pt-[5px] text-[11px] leading-none text-[var(--color-accent)]">{String(i + 1).padStart(2, '0')}</span>
+                    <span class="text-[12px] leading-[1.9] text-[var(--color-ink-muted)] group-hover:text-[var(--color-brand)]">{item.text}</span>
+                  </a>
+                </li>
+              ))}
+            </ol>
+            <div class="h-px w-full bg-[var(--color-border)]"></div>
+            {hasFindings && (
+              <a href="#findings" class="text-[12px] leading-[1.9] text-[var(--color-brand)] hover:underline">今回わかったこと<br />次に試すこと</a>
+            )}
+            <p class="whitespace-pre-line font-serif text-[13px] leading-[2] text-[var(--color-ink-muted)]">{ARTICLE_SIGNATURE.replace('。', '。\n')}</p>
+          </div>
+        </aside>
+      )}
     </div>
   </section>
 
