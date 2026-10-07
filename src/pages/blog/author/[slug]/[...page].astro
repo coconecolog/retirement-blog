@@ -2,9 +2,7 @@
 import BaseLayout from '../../../../layouts/BaseLayout.astro';
 import PostCard from '../../../../components/PostCard.astro';
 import Pagination from '../../../../components/Pagination.astro';
-import BlogSidebar from '../../../../components/BlogSidebar.astro';
-import AuthorBox from '../../../../components/AuthorBox.astro';
-import { getAllPosts, getAllCategories, getAllTags, getAllAuthors, getAuthorBySlug } from '../../../../lib/notion';
+import { getAllPosts, getAllAuthors, getAuthorBySlug } from '../../../../lib/notion';
 import { SITE } from '../../../../lib/site.config';
 
 export async function getStaticPaths({ paginate }: any) {
@@ -23,51 +21,36 @@ export async function getStaticPaths({ paginate }: any) {
 const { page } = Astro.props as any;
 const { slug } = Astro.params;
 const author = slug ? await getAuthorBySlug(slug) : null;
-const categories = await getAllCategories();
-const tags = await getAllTags();
-const popularPosts = (await getAllPosts()).slice(0, 5);
+const name = author?.name ?? '執筆者';
+const basePath = `/blog/author/${slug}`;
 ---
 
 <BaseLayout
-  title={author ? `${author.name}の記事一覧` : '執筆者の記事一覧'}
-  description={author?.bio || `${SITE.title}の執筆者の記事一覧`}
-  canonicalPath={page.currentPage === 1 ? `/blog/author/${slug}` : `/blog/author/${slug}/${page.currentPage}`}
+  title={`${name}の記事一覧`}
+  description={author?.bio || `${SITE.title}の${name}の記事一覧`}
+  canonicalPath={page.currentPage === 1 ? basePath : `${basePath}/${page.currentPage}`}
 >
-  <div class="mx-auto max-w-6xl px-6 py-16">
-    <nav class="mb-6 text-sm text-[var(--color-ink-muted)]">
-      <a href="/" class="hover:text-[var(--color-brand)]">トップ</a>
-      <span class="mx-2">/</span>
-      <a href="/blog" class="hover:text-[var(--color-brand)]">ブログ一覧</a>
-      <span class="mx-2">/</span>
-      <span>{author?.name ?? '執筆者'}</span>
-    </nav>
+  <section class="px-6 pt-[30px] pb-20 md:px-24">
+    <div class="mx-auto max-w-[1248px]">
+      <nav class="flex items-center gap-[14px] text-[11px] text-[var(--color-ink-muted)]" aria-label="パンくずリスト">
+        <a href="/" class="hover:text-[var(--color-brand)]">ホーム</a>
+        <span>／</span>
+        <a href="/blog" class="hover:text-[var(--color-brand)]">ブログ</a>
+        <span>／</span>
+        <span>{name}</span>
+      </nav>
+      <p class="eyebrow mt-10">WRITER</p>
+      <h1 class="mt-4 font-serif text-[32px] font-semibold text-[var(--color-ink)] sm:text-[40px]">{name}</h1>
+      {author?.bio && <p class="mt-5 max-w-[760px] whitespace-pre-line text-[15px] leading-[2] text-[var(--color-ink-muted)]">{author.bio}</p>}
 
-    <div class="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_280px]">
-      <div class="min-w-0">
-        {author && (
-          <div class="mb-10">
-            <AuthorBox author={author} showLabel={false} showArchiveLink={false} />
-          </div>
-        )}
-
-        <h1 class="mb-6 text-2xl font-bold text-[var(--color-ink)]">
-          {author ? `${author.name}の記事一覧` : '記事一覧'}
-        </h1>
-
-        {page.data.length > 0 ? (
-          <div class="grid gap-6 sm:grid-cols-2">
-            {page.data.map((post: any) => <PostCard post={post} />)}
-          </div>
-        ) : (
-          <p class="rounded-2xl border border-dashed border-[var(--color-border)] p-10 text-center text-[var(--color-ink-muted)]">
-            該当する記事がありません。
-          </p>
-        )}
-
-        <Pagination currentPage={page.currentPage} lastPage={page.lastPage} basePath={`/blog/author/${slug}`} />
-      </div>
-
-      <BlogSidebar categories={categories} popularPosts={popularPosts} tags={tags} />
+      {page.data.length > 0 ? (
+        <div class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {page.data.map((post: any) => <PostCard post={post} />)}
+        </div>
+      ) : (
+        <p class="mt-12 rounded-[20px] border border-dashed border-[var(--color-border)] p-10 text-center text-[14px] text-[var(--color-ink-muted)]">記録は、これから増えていきます。</p>
+      )}
+      <Pagination currentPage={page.currentPage} lastPage={page.lastPage} basePath={basePath} />
     </div>
-  </div>
+  </section>
 </BaseLayout>
