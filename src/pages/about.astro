@@ -1,30 +1,226 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { SITE } from '../lib/site.config';
+import { SITE, THEMES, themeHref } from '../lib/site.config';
+
+// ===== 「このサイトについて」の文言（ここを書き換えると反映されます） =====
+const HERO = {
+  eyebrow: 'ABOUT  /  この場所に込めたこと',
+  title: 'このサイトについて',
+  lead: 'これからの暮らしを、誰かの正解ではなく、\n自分の手で少しずつ育てていく。',
+  body: '仕事も、家族も、自分のことも。どれかひとつを諦める前に、\n時間とお金の持ち方を、もう一度考えてみたい。\nここは、そんな私の小さな実験と、途中経過を置く場所です。',
+  caption: '余白から、暮らしへ。暮らしから、記録へ。',
+};
+const PILLARS = [
+  {
+    eyebrow: 'MISSION  /  ミッション',
+    sub: '何を、大切にしているか',
+    image: '/images/about/mission.svg',
+    title: '働くことと生きることの間に、\n自分らしい余白をつくる',
+    body: [
+      '仕事の責任、家族のこと、これからのお金。気がつくと、自分の時間はいつも後回しになっている。そんな40〜50代、とくに女性会社員の方と、時間の捉え方を考え直してみたいと思っています。',
+      'キャリアや家庭、投資、技術を試す日々から、「我慢を重ねる」だけではない選択肢を。余白は、何もしていない時間ではなく、自分で選べる時間なのだと思います。',
+    ],
+  },
+  {
+    eyebrow: 'VISION  /  ビジョン',
+    sub: 'どんな未来に、向かいたいか',
+    image: '/images/about/vision.svg',
+    title: '誰もが自分のペースで\n時間と収入を育める未来',
+    body: [
+      '週5日・8時間働き続けるか、完全に引退するか。その二つの間にも、きっといくつもの暮らし方があります。働く量を少し変える、小さな収入の入口を育てる。自分に合うペースを探していい。',
+      '誰かと速さや金額を競うのではなく、「これなら続けられそう」と思える手触りを大切に。時間も収入も、暮らしに合わせて育める未来を目指しています。',
+    ],
+  },
+];
+const CONCEPT = {
+  eyebrow: 'CONCEPT  /  いま、ここで記録すること',
+  title: '老後に向けた「最後の攻め」と、\n資産の「守り方」を探る。',
+  sub: '50代から育てる、自分時間と暮らしのポートフォリオ',
+  points: [
+    { title: 'お金だけが、資産ではないから。', body: '積み重ねた経験や知恵、これから使える時間も、私の資産。何を持っていて、何に使いたいのか。増やす前に、まず自分の棚卸しから始めます。' },
+    { title: '教える人ではなく、試す本人として。', body: '専門家の解説ではなく、成功も失敗も、まだ途中のことも残す実験ログです。極端なFIREや高リスクの起業、成功自慢ではなく、「自分も小さく試してみよう」と思える記録を。' },
+  ],
+  closing: '大きく賭けずに、小さく試す。違ったら戻る。その道筋も、ここに残していきます。',
+};
+// 3つのテーマのカードに添える小さな説明（テーマ名の順）
+const THEME_NOTES: Record<string, string[]> = {
+  work: ['週5日8時間からの距離の置き方', 'セミリタイアへの準備'],
+  money: ['50代からの資産形成', '自分サイズの予算感'],
+  media: ['AIで作る個人サイト', '自分のペースで試す技術'],
+};
+const INTRO = {
+  eyebrow: '記録する人  /  小さな自己紹介',
+  title: '私も、まだ試している途中です。',
+  body: 'WEBディレクター・マーケターとしての経験や、子どもの不登校と向き合う日々を通して、自分や家族に合うペースを考えてきました。投資も、AIを使ったサイトづくりも、試しながら学んでいます。誰かを導くより、同じ道を歩く一人として書いていきます。',
+};
+// SNS：url に公開URLを入れるとリンクになり、空欄なら「準備中」と表示されます
+const SOCIALS = [
+  { name: 'X', url: '' },
+  { name: 'Threads', url: '' },
+  { name: 'Instagram', url: '' },
+  { name: 'LinkedIn', url: '' },
+  { name: 'YouTube', url: '' },
+];
+const CLOSING = {
+  eyebrow: 'CONTINUE READING  /  ここから、記録へ',
+  title: '急がない。でも、止まらない。',
+  body: 'きれいな答えより、試してわかった小さな手応えを。私の途中の話を、どうぞ。',
+};
+// ============================================================
+
+const readySocials = SOCIALS.filter((s) => s.url).length;
 ---
 
-<BaseLayout title="ABOUT" description={`${SITE.title}について`} canonicalPath="/about">
-  <div class="mx-auto max-w-3xl px-6 py-16">
-    <nav class="mb-6 text-sm text-[var(--color-ink-muted)]">
-      <a href="/" class="hover:text-[var(--color-brand)]">トップ</a>
-      <span class="mx-2">/</span>
-      <span>ABOUT</span>
-    </nav>
-
-    <h1 class="text-3xl font-bold text-[var(--color-ink)]">ABOUT</h1>
-    <div class="prose prose-neutral mt-8 max-w-none">
-      <p>
-        このサイトは、50代前後で気づけば投資資産が積み上がってきた方に向けて、老後に向けた「最後の攻め」と
-        「資産の守り方」を学んでいただくための情報サイトです。
-      </p>
-      <p>
-        資産を増やすことに慣れてきた方でも、いざ「取り崩す」「守る」フェーズになると、勝手が違うもの。
-        このサイトでは、出口戦略・リスク管理・制度の活用など、実践的なテーマを取り上げていきます。
-      </p>
-      <p class="text-sm text-[var(--color-ink-muted)]">
-        ※ このページの文章は仮の内容です。運営者情報やサイトの想いなど、確定した内容に差し替えてください
-        （<code>src/pages/about.astro</code>）。
-      </p>
+<BaseLayout title="このサイトについて" description={`${SITE.title}について。${CONCEPT.title.replace('\n', '')}`} canonicalPath="/about">
+  <!-- ===== 冒頭 ===== -->
+  <section class="px-6 pt-[30px] md:px-24">
+    <div class="mx-auto max-w-[1248px] border-b border-[var(--color-border)] pb-14">
+      <nav class="flex items-center gap-[14px] text-[11px] text-[var(--color-ink-muted)]" aria-label="パンくずリスト">
+        <a href="/" class="hover:text-[var(--color-brand)]">ホーム</a>
+        <span>／</span>
+        <span>このサイトについて</span>
+      </nav>
+      <div class="mt-12 flex flex-col gap-10 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <p class="eyebrow whitespace-pre">{HERO.eyebrow}</p>
+          <h1 class="mt-6 font-serif text-[36px] font-semibold text-[var(--color-ink)] sm:text-[48px]">{HERO.title}</h1>
+          <p class="mt-6 font-serif text-[19px] leading-[1.9] text-[var(--color-ink)] sm:text-[24px]">{HERO.lead.split('\n').map((l, i) => <>{i > 0 && <br class="hidden sm:inline" />}{l}</>)}</p>
+          <p class="mt-6 text-[14px] leading-[2.1] text-[var(--color-ink-muted)]">{HERO.body.split('\n').map((l, i) => <>{i > 0 && <br class="hidden sm:inline" />}{l}</>)}</p>
+        </div>
+        <div class="flex shrink-0 flex-col items-center gap-3">
+          <img src="/images/about/hero.svg" alt="" width="440" height="260" class="h-auto w-full max-w-[440px]" />
+          <p class="font-serif text-[13px] text-[var(--color-brand)]">{HERO.caption}</p>
+        </div>
+      </div>
     </div>
-  </div>
+  </section>
+
+  <!-- ===== ミッション／ビジョン ===== -->
+  <section class="px-6 md:px-24">
+    <div class="mx-auto max-w-[1248px]">
+      {PILLARS.map((p) => (
+        <div class="flex flex-col gap-8 border-b border-[var(--color-border)] py-14 lg:flex-row lg:gap-[72px]">
+          <div class="lg:w-[240px] lg:shrink-0">
+            <p class="eyebrow whitespace-pre">{p.eyebrow}</p>
+            <p class="mt-2 text-[12px] text-[var(--color-ink-muted)]">{p.sub}</p>
+            <img src={p.image} alt="" width="240" height="190" class="mt-4 h-auto w-[200px] lg:w-[240px]" />
+          </div>
+          <div>
+            <h2 class="font-serif text-[24px] font-semibold leading-[1.7] text-[var(--color-ink)] sm:text-[32px]">{p.title.split('\n').map((l, i) => <>{i > 0 && <br class="hidden sm:inline" />}{l}</>)}</h2>
+            {p.body.map((t) => <p class="mt-5 text-[14px] leading-[2.1] text-[var(--color-ink-muted)] sm:text-[15px]">{t}</p>)}
+          </div>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <!-- ===== コンセプト ===== -->
+  <section class="px-6 py-16 md:px-24">
+    <div class="mx-auto max-w-[1248px] rounded-[20px] bg-[var(--color-sand)] p-7 sm:p-12">
+      <div class="flex flex-col gap-8 border-b border-[var(--color-border)] pb-8 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <p class="eyebrow whitespace-pre">{CONCEPT.eyebrow}</p>
+          <h2 class="mt-5 font-serif text-[24px] font-semibold leading-[1.7] text-[var(--color-ink)] sm:text-[32px]">{CONCEPT.title.split('\n').map((l, i) => <>{i > 0 && <br class="hidden sm:inline" />}{l}</>)}</h2>
+          <p class="mt-5 font-serif text-[16px] text-[var(--color-brand)] sm:text-[18px]">{CONCEPT.sub}</p>
+        </div>
+        <img src="/images/about/concept.svg" alt="" width="300" height="210" class="h-auto w-full max-w-[300px] shrink-0" />
+      </div>
+      <div class="mt-8 grid gap-8 md:grid-cols-2 md:gap-14">
+        {CONCEPT.points.map((pt) => (
+          <div>
+            <p class="font-serif text-[18px] font-semibold text-[var(--color-ink)] sm:text-[20px]">{pt.title}</p>
+            <p class="mt-3 text-[13px] leading-[2.1] text-[var(--color-ink-muted)]">{pt.body}</p>
+          </div>
+        ))}
+      </div>
+      <p class="mt-8 font-serif text-[15px] leading-[1.9] text-[var(--color-brand)] sm:text-[16px]">{CONCEPT.closing}</p>
+    </div>
+  </section>
+
+  <!-- ===== 3つの記録テーマ ===== -->
+  <section class="bg-[var(--color-sand)] px-6 py-16 md:px-24">
+    <div class="mx-auto max-w-[1248px]">
+      <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p class="eyebrow whitespace-pre">THREE PATHS  /  3つの記録テーマ</p>
+          <h2 class="mt-4 font-serif text-[24px] font-semibold text-[var(--color-ink)] sm:text-[32px]">ひとつの暮らしを、3つの入口から。</h2>
+        </div>
+        <p class="text-[12px] text-[var(--color-ink-muted)]">気になる問いから、読んでみてください。</p>
+      </div>
+      <div class="mt-8 grid gap-6 md:grid-cols-3">
+        {THEMES.map((t) => (
+          <a href={themeHref(t.name)} class="group flex flex-col rounded-[20px] bg-[var(--color-surface)] p-7">
+            <div class="flex items-center justify-between gap-4 border-b border-[var(--color-border)] pb-5">
+              <p class="font-serif text-[15px] text-[var(--color-ink)]">{t.pathTitle}</p>
+              <img src={`/images/themes/icon-${t.key}.png`} alt="" width="132" height="132" class="size-[72px] shrink-0 rounded-full" />
+            </div>
+            <p class="mt-5 font-serif text-[20px] font-semibold text-[var(--color-ink)]">{t.name}</p>
+            <ul class="mt-3 flex flex-col gap-1.5">
+              {(THEME_NOTES[t.key] ?? []).map((n) => (
+                <li class="flex items-center gap-2 text-[12px] text-[var(--color-ink-muted)]"><span class="size-[5px] rounded-full bg-[var(--color-accent)]"></span>{n}</li>
+              ))}
+            </ul>
+            <p class="mt-5 text-[12px] font-medium text-[var(--color-brand)] group-hover:underline">このテーマの記録を読む →</p>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 小さな自己紹介 ===== -->
+  <section class="px-6 pt-16 md:px-24">
+    <div class="mx-auto flex max-w-[1080px] flex-col gap-6 border-b border-[var(--color-border)] pb-12 sm:flex-row sm:items-center sm:gap-8">
+      <div class="w-[132px] shrink-0 overflow-hidden rounded-[16px]">
+        <img src="/images/author-portrait.svg" alt="" width="150" height="154" class="h-auto w-full" />
+      </div>
+      <div>
+        <p class="eyebrow whitespace-pre">{INTRO.eyebrow}</p>
+        <p class="mt-3 font-serif text-[20px] font-semibold text-[var(--color-ink)] sm:text-[22px]">{INTRO.title}</p>
+        <p class="mt-3 text-[13px] leading-[2.1] text-[var(--color-ink-muted)]">{INTRO.body}</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== SNS ===== -->
+  <section class="px-6 py-14 md:px-24">
+    <div class="mx-auto max-w-[1248px]">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p class="eyebrow whitespace-pre">SOCIAL  /  SNSのご案内</p>
+          <h2 class="mt-4 font-serif text-[24px] font-semibold text-[var(--color-ink)] sm:text-[30px]">SNSも、少しずつ準備しています。</h2>
+        </div>
+        <p class="text-[12px] leading-[2] text-[var(--color-ink-muted)]">公開できるようになったら、このページでご案内します。<br />いまは、サイトのブログからお読みいただけます。</p>
+      </div>
+      <div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 lg:gap-4">
+        {SOCIALS.map((sns) => (
+          sns.url ? (
+            <a href={sns.url} target="_blank" rel="noopener" class="rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-5 hover:border-[var(--color-brand)]">
+              <p class="text-[17px] font-medium text-[var(--color-ink)]">{sns.name}</p>
+              <p class="mt-3 text-[11px] font-medium text-[var(--color-brand)]">フォローする →</p>
+            </a>
+          ) : (
+            <div class="rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-5">
+              <p class="text-[17px] font-medium text-[var(--color-ink)]">{sns.name}</p>
+              <p class="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[var(--color-sand)] px-3 py-1 text-[11px] font-medium text-[var(--color-brand)]"><span class="size-[5px] rounded-full bg-[var(--color-accent)]"></span>準備中</p>
+            </div>
+          )
+        ))}
+      </div>
+      {readySocials === 0 && (
+        <p class="mt-5 text-[11px] text-[var(--color-ink-muted)]">{SOCIALS.length}つのSNSはすべて準備中です。現在、アカウントへのリンクは公開していません。</p>
+      )}
+    </div>
+  </section>
+
+  <!-- ===== ここから、記録へ ===== -->
+  <section class="bg-[var(--color-sand)] px-6 py-14 md:px-24">
+    <div class="mx-auto flex max-w-[1080px] flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p class="eyebrow whitespace-pre">{CLOSING.eyebrow}</p>
+        <p class="mt-4 font-serif text-[24px] font-semibold text-[var(--color-ink)] sm:text-[30px]">{CLOSING.title}</p>
+        <p class="mt-3 text-[13px] text-[var(--color-ink-muted)]">{CLOSING.body}</p>
+      </div>
+      <a href="/blog" class="inline-flex h-[52px] w-fit shrink-0 items-center gap-2.5 rounded-full bg-[var(--color-brand)] px-7 text-[14px] font-medium text-[var(--color-surface)] hover:opacity-90">ブログを読む<span class="text-[16px]">→</span></a>
+    </div>
+  </section>
 </BaseLayout>
