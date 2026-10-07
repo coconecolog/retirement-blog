@@ -3,30 +3,28 @@ import BaseLayout from '../../../../layouts/BaseLayout.astro';
 import PostCard from '../../../../components/PostCard.astro';
 import Pagination from '../../../../components/Pagination.astro';
 import NoteBox from '../../../../components/NoteBox.astro';
-import { getAllPosts, getAllCategories, getCategoryMeta } from '../../../../lib/notion';
+import { getAllPosts, getCategoryMeta } from '../../../../lib/notion';
 import { formatDateDot, estimateReadMinutes } from '../../../../lib/format';
-import { SITE, THEMES, findTheme, themeHref, themeColor } from '../../../../lib/site.config';
+import { SITE, THEMES, themeHref, themeColor } from '../../../../lib/site.config';
 
 export async function getStaticPaths({ paginate }: any) {
   const posts = await getAllPosts();
-  // 記事が0件のテーマも、ページだけは作っておく（ヘッダー・フッターからリンクしているため）
-  const categories = [...new Set([...THEMES.map((t) => t.name), ...(await getAllCategories())])];
-
-  return categories.flatMap((category) => {
-    const filtered = posts.filter((p) => p.categories.includes(category));
+  // URLは英字（/blog/category/work, money, media）。記事が0件のテーマもページだけは作る。
+  return THEMES.flatMap((theme) => {
+    const filtered = posts.filter((p) => p.categories.includes(theme.name));
     return paginate(filtered, {
-      params: { category },
+      params: { category: theme.key },
       pageSize: SITE.postsPerPage,
     });
   });
 }
 
 const { page } = Astro.props as any;
-const { category } = Astro.params as { category: string };
+const theme = THEMES.find((t) => t.key === Astro.params.category)!;
+const category = theme.name;
 const allPosts = await getAllPosts();
 const categoryMeta = await getCategoryMeta();
 const meta = categoryMeta.get(category);
-const theme = findTheme(category);
 const otherThemes = THEMES.filter((t) => t.name !== category).slice(0, 2);
 const isFirstPage = page.currentPage === 1;
 
@@ -36,7 +34,7 @@ const startHere =
   (meta?.representativePageId && allPosts.find((p) => p.id === meta.representativePageId)) ||
   themePosts[themePosts.length - 1];
 
-const basePath = `/blog/category/${category}`;
+const basePath = `/blog/category/${theme.key}`;
 const shownFrom = (page.currentPage - 1) * SITE.postsPerPage + 1;
 const shownTo = shownFrom + page.data.length - 1;
 ---
@@ -59,7 +57,7 @@ const shownTo = shownFrom + page.data.length - 1;
 
       <div class="mt-10 flex flex-col gap-10 lg:mt-12 lg:flex-row lg:items-center lg:justify-between">
         <div class="max-w-[784px]">
-          <p class="eyebrow whitespace-pre">{theme ? `THEME ${theme.number}  /  ${theme.en}` : 'THEME'}</p>
+          <p class="eyebrow whitespace-pre">{`THEME ${theme.number}  /  ${theme.en}`}</p>
           <h1 class="mt-6 font-serif text-[36px] font-semibold leading-[1.5] text-[var(--color-ink)] sm:text-[46px]">{category}</h1>
           <div class="mt-6 text-[15px] leading-[2] text-[var(--color-ink-muted)]">
             {theme?.tagline && <p>{theme.tagline}</p>}
