@@ -6,9 +6,9 @@
 import { Client } from '@notionhq/client';
 import { NotionToMarkdown } from 'notion-to-md';
 import { marked, Renderer } from 'marked';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { SITE, normalizeCategory } from './site.config';
+import { SITE, normalizeCategory, findTheme } from './site.config';
 
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const NOTION_DATABASE_ID = process.env.NOTION_DATABASE_ID;
@@ -999,6 +999,36 @@ function makeExcerpt(markdown: string, length = 110): string {
   return plain.length > length ? plain.slice(0, length) + '…' : plain;
 }
 
+// ===== テーマ別サムネイル =====
+// public/images/thumbnails/ に「テーマの英字-番号.拡張子」（例：money-1.png, work-3.webp）で置いた画像を読み込む。
+const THUMBNAIL_POOL_DIR = path.join(process.cwd(), 'public', 'images', 'thumbnails');
+let thumbnailPool: Map<string, string[]> | null = null;
+
+function loadThumbnailPool(): Map<string, string[]> {
+  if (thumbnailPool) return thumbnailPool;
+  thumbnailPool = new Map();
+  if (!existsSync(THUMBNAIL_POOL_DIR)) return thumbnailPool;
+  const files = readdirSync(THUMBNAIL_POOL_DIR)
+    .filter((f) => /\.(png|jpe?g|webp)$/i.test(f))
+    .sort((a, b) => a.localeCompare(b, 'en', { numeric: true }));
+  for (const file of files) {
+    const key = file.split('-')[0].toLowerCase();
+    if (!thumbnailPool.has(key)) thumbnailPool.set(key, []);
+    thumbnailPool.get(key)!.push(`/images/thumbnails/${file}`);
+  }
+  return thumbnailPool;
+}
+
+function pickPoolThumbnail(categoryName: string | undefined, pageId: string): string | null {
+  const theme = findTheme(categoryName);
+  if (!theme) return null;
+  const pool = loadThumbnailPool().get(theme.key);
+  if (!pool || pool.length === 0) return null;
+  let hash = 0;
+  for (const ch of pageId.replace(/-/g, '')) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  return pool[hash % pool.length];
+}
+
 export async function getAllPosts(): Promise<Post[]> {
   if (cachedPosts) return cachedPosts;
 
@@ -1059,28 +1089,16 @@ export async function getAllPosts(): Promise<Post[]> {
       // categories：旧カテゴリ名を3つのテーマ名にそろえたもの（サイトの表示・テーマページの振り分けに使う）
       const rawCategories: string[] = getRelationNames(props[PROP.category], categoryNameMap);
       const categories: string[] = [...new Set(rawCategories.map(normalizeCategory))];
+      // サムネイル：テーマごとに用意した画像（public/images/thumbnails/ の money-1.png など）から、
+      // 記事のIDをもとに1枚を選ぶ。ビルドのたびに変わらないよう、同じ記事には常に同じ画像が当たる。
+      // （Notionの「サムネイル画像」に画像が入っている記事だけは、そちらを優先する）
       const rawThumbnail = getThumbnail(props[PROP.thumbnail]);
       let thumbnail = rawThumbnail ? await downloadThumbnail(rawThumbnail, page.id) : null;
-      // サムネイル画像が未設定の記事は、先頭のカテゴリの背景画像（無ければ既定グラデーション）に
-      // 「サムネ用タイトル」（未入力なら記事タイトル）「サムネ用サブタイトル」を重ねた画像を自動生成する。
-      if (!thumbnail) {
-        // 先頭のカテゴリから順に、実際に背景画像ファイルが見つかるものを探す
-        // （複数カテゴリがある記事で、先頭のカテゴリに画像未設定の場合のフォールバック）。
-        let backgroundDataUri: string | null = null;
-        for (const categoryName of rawCategories) {
-          const candidate = resolveCategoryBackgroundDataUri(categoryMeta.get(categoryName)?.backgroundImage);
-          if (candidate) {
-            backgroundDataUri = candidate;
-            break;
-          }
-        }
-        const thumbTitle = getFirstCustomText(props, THUMBNAIL_TITLE_PROP_CANDIDATES) || title;
-        const thumbSubtitle = getFirstCustomText(props, THUMBNAIL_SUBTITLE_PROP_CANDIDATES);
-        thumbnail = generateFallbackThumbnail(page.id, backgroundDataUri, thumbTitle, thumbSubtitle);
-      }
+      if (!thumbnail) thumbnail = pickPoolThumbnail(categories[0], page.id);
 
       const fallbackSlug = toSlug(page.id);
-      const customSlug = getCustomSlug(props[PROP.slug]);
+      // プロパティ名は「スラッグ」「Slug」のどちらでも可
+      const customSlug = getCustomSlug(props[PROP.slug] ?? props['Slug']);
       let slug = customSlug || fallbackSlug;
       if (usedSlugs.has(slug)) {
         console.warn(`[notion] スラッグ「${slug}」が重複しています。「${title}」はページIDのURLにフォールバックします。`);
