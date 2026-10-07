@@ -1000,7 +1000,8 @@ function makeExcerpt(markdown: string, length = 110): string {
 }
 
 // ===== テーマ別サムネイル =====
-// public/images/thumbnails/ に「テーマの英字-番号.拡張子」（例：money-1.png, work-3.webp）で置いた画像を読み込む。
+// public/images/thumbnails/ に「テーマの英字-名前.拡張子」（例：money-cups.png）で置いた画像を読み込む。
+// 先頭が work / money / media の画像はそのテーマ専用、common の画像はすべてのテーマで使う。
 const THUMBNAIL_POOL_DIR = path.join(process.cwd(), 'public', 'images', 'thumbnails');
 let thumbnailPool: Map<string, string[]> | null = null;
 
@@ -1022,8 +1023,10 @@ function loadThumbnailPool(): Map<string, string[]> {
 function pickPoolThumbnail(categoryName: string | undefined, pageId: string): string | null {
   const theme = findTheme(categoryName);
   if (!theme) return null;
-  const pool = loadThumbnailPool().get(theme.key);
-  if (!pool || pool.length === 0) return null;
+  // テーマ色の画像（work-〜 など）＋共通の画像（common-〜）の中から選ぶ
+  const all = loadThumbnailPool();
+  const pool = [...(all.get(theme.key) ?? []), ...(all.get('common') ?? [])];
+  if (pool.length === 0) return null;
   let hash = 0;
   for (const ch of pageId.replace(/-/g, '')) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
   return pool[hash % pool.length];
