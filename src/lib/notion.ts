@@ -8,7 +8,7 @@ import { NotionToMarkdown } from 'notion-to-md';
 import { marked, Renderer } from 'marked';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { SITE } from './site.config';
+import { SITE, normalizeCategory } from './site.config';
 
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const NOTION_DATABASE_ID = process.env.NOTION_DATABASE_ID;
@@ -1055,7 +1055,10 @@ export async function getAllPosts(): Promise<Post[]> {
       const tags: string[] = getRelationNames(props[PROP.tags], tagNameMap);
       const publishedAt: string = props[PROP.publishedAt]?.date?.start ?? page.created_time;
       const updatedAt: string = props[PROP.updatedAt]?.date?.start ?? page.last_edited_time;
-      const categories: string[] = getRelationNames(props[PROP.category], categoryNameMap);
+      // rawCategories：Notionのカテゴリ名そのまま（自動サムネイルの背景画像選びに使う）
+      // categories：旧カテゴリ名を3つのテーマ名にそろえたもの（サイトの表示・テーマページの振り分けに使う）
+      const rawCategories: string[] = getRelationNames(props[PROP.category], categoryNameMap);
+      const categories: string[] = [...new Set(rawCategories.map(normalizeCategory))];
       const rawThumbnail = getThumbnail(props[PROP.thumbnail]);
       let thumbnail = rawThumbnail ? await downloadThumbnail(rawThumbnail, page.id) : null;
       // サムネイル画像が未設定の記事は、先頭のカテゴリの背景画像（無ければ既定グラデーション）に
@@ -1064,7 +1067,7 @@ export async function getAllPosts(): Promise<Post[]> {
         // 先頭のカテゴリから順に、実際に背景画像ファイルが見つかるものを探す
         // （複数カテゴリがある記事で、先頭のカテゴリに画像未設定の場合のフォールバック）。
         let backgroundDataUri: string | null = null;
-        for (const categoryName of categories) {
+        for (const categoryName of rawCategories) {
           const candidate = resolveCategoryBackgroundDataUri(categoryMeta.get(categoryName)?.backgroundImage);
           if (candidate) {
             backgroundDataUri = candidate;
