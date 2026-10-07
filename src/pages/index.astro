@@ -1,10 +1,52 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import PostCard from '../components/PostCard.astro';
 import { getAllPosts } from '../lib/notion';
-import { SITE } from '../lib/site.config';
+import { formatDateDot } from '../lib/format';
+import { SITE, THEMES, AUTHOR_PROFILE, findTheme, themeHref } from '../lib/site.config';
 
-const posts = (await getAllPosts()).slice(0, 6);
+// ===== トップページの文言（ここを書き換えると反映されます） =====
+const HERO = {
+  kicker: '働き方・お金',
+  // 改行したい位置に \n を入れてください
+  title: '50代から育てる、\n自分時間と小さな資産の\nポートフォリオ',
+  lead: '気づけば積み上がってきた経験と知見。ブログで収益化をめざし、リアルに実践・公開していきます。',
+};
+const ABOUT = {
+  title: '暮らしと仕事のあいだに、\n自分らしい余白をつくる。',
+  body: [
+    '完全FIREや、大きな起業を目指す場所ではありません。週5日・8時間の拘束から少しずつ距離を置き、時間と収入を自分のペースで育てるための実験ログです。',
+    '教えるプロではなく、試している本人として。AI、資産、働き方の成功も失敗も、なるべく温度が残るうちに記録します。',
+  ],
+};
+const LATEST = {
+  title: '最近の、\nまだ途中の話',
+  body: 'うまくいったら続ける。違ったら戻す。人生を大きく賭けずに、暮らしの手触りを少しずつ変えていきます。',
+  count: 4,
+};
+const STORY = {
+  title: '時間も資産も、\n「どれだけあるか」から\n「どう使いたいか」へ。',
+  body: '会社員として長く働くうち、増やすことには慣れました。でも、これから必要なのは、減らさない工夫だけではなく、何に注げば自分の暮らしが育つのかを知ることかもしれません。',
+  linkLabel: 'この話の続きを読む',
+  linkHref: '/about',
+  note: 'ためるだけでなく、\n何に注ぐかを考える。',
+};
+const PROFILE = {
+  title: '会社員を続けながら、これからの働き方を試しています。',
+  body: [
+    '50代、会社員。長く働いて、少しの資産と、たくさんの「このままでいいのかな」が残りました。専門家ではありません。だからこそ、調べ、試し、迷った道筋まで共有します。',
+    '誰もが、自分のペースで時間と収入を育てられる未来へ。このサイトは、そのための小さな作業机です。',
+  ],
+  facts: ['会社員歴27年', 'AIは独学中', '投資は慎重派', '寄り道多め'],
+};
+const CONTACT = {
+  eyebrow: 'LETTER FROM THE MIDDLE OF THE ROAD',
+  title: '途中のまま、届く手紙。',
+  body: '記事へのご感想や、聞いてみたいこと。途中のままの言葉でも、お気軽にお寄せください。',
+  note: 'ゆっくり、ポストへ。',
+};
+// ============================================================
+
+const latestPosts = (await getAllPosts()).slice(0, LATEST.count);
 
 const websiteJsonLd = {
   '@context': 'https://schema.org',
@@ -16,45 +58,145 @@ const websiteJsonLd = {
 ---
 
 <BaseLayout jsonLd={websiteJsonLd}>
-  <section class="border-b border-[var(--color-border)] bg-[var(--color-surface)]">
-    <div class="mx-auto max-w-6xl px-6 py-24">
-      <h1 class="text-4xl font-bold leading-tight text-[var(--color-ink)] sm:text-5xl">
-        老後に向けた「最後の攻め」と、<br />資産の「守り方」を探る。
-      </h1>
-      <p class="mt-6 text-lg leading-relaxed text-[var(--color-ink-muted)]">
-        気づけば積み上がってきた投資資産。ここから戦略的になるために、基礎から学んでいきます。
-      </p>
-      <div class="mt-10 flex gap-4">
-        
-          <a href="/blog"
-          class="rounded-full bg-[var(--color-brand)] px-7 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-brand-dark)]"
-        >
-          記事を読む
-        </a>
-        
-          <a href="/about"
-          class="rounded-full border border-[var(--color-border)] px-7 py-3 text-sm font-semibold text-[var(--color-ink)] transition-colors hover:border-[var(--color-brand)] hover:text-[var(--color-brand)]"
-        >
-          このサイトについて
-        </a>
+  <!-- ===== ヒーロー ===== -->
+  <section class="px-6 pt-12 pb-20 md:px-24 lg:pt-16 lg:pb-24">
+    <div class="mx-auto flex max-w-[1248px] flex-col gap-12 lg:flex-row lg:items-center lg:justify-between">
+      <div class="relative z-10 lg:max-w-[640px]">
+        <p class="eyebrow">{HERO.kicker}</p>
+        <h1 class="mt-6 whitespace-pre-line font-serif text-[27px] font-semibold leading-[1.5] text-[var(--color-ink)] sm:text-[44px] xl:text-[56px] xl:leading-[1.4]">{HERO.title}</h1>
+        <p class="mt-6 max-w-[540px] text-[16px] leading-[1.9] text-[var(--color-ink-muted)] sm:text-[20px]">{HERO.lead}</p>
+        <div class="mt-8 flex flex-wrap items-center gap-[18px]">
+          <a href="/blog" class="inline-flex h-[52px] items-center gap-2.5 rounded-full bg-[var(--color-brand)] px-6 text-[14px] font-medium text-[var(--color-surface)] hover:opacity-90">ブログを読む<span class="text-[16px]">→</span></a>
+          <a href="/about" class="inline-flex items-center gap-2.5 text-[14px] font-medium text-[var(--color-brand)] hover:underline">この場所について<span class="text-[16px]">→</span></a>
+        </div>
+      </div>
+      <div class="relative mx-auto w-full max-w-[560px] shrink-0 lg:mx-0">
+        <img src="/images/top/hero.svg" alt="" width="560" height="580" class="h-auto w-full" />
+        <p class="absolute top-[44%] left-[1%] w-[27%] text-center text-[10px] leading-[1.6] text-[var(--color-brand)] sm:text-[11px]">急がない。<br />でも、止まらない。</p>
+        <p class="absolute top-[71.5%] left-[65%] w-[21%] text-center text-[10px] leading-[1.6] text-[var(--color-brand)] sm:text-[11px]">暮らしの余白を<br />少しずつ。</p>
       </div>
     </div>
   </section>
 
-  <section class="mx-auto max-w-6xl px-6 py-20">
-    <div class="mb-10 flex items-end justify-between">
-      <h2 class="text-2xl font-bold text-[var(--color-ink)]">新着記事</h2>
-      <a href="/blog" class="text-sm font-medium text-[var(--color-brand)] hover:underline">すべて見る →</a>
-    </div>
-
-    {posts.length > 0 ? (
-      <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {posts.map((post) => <PostCard post={post} />)}
+  <!-- ===== この場所について＋3つの道 ===== -->
+  <section id="themes" class="scroll-mt-6 bg-[var(--color-sand)] px-6 py-20 md:px-24 lg:py-[104px]">
+    <div class="mx-auto max-w-[1248px]">
+      <div class="flex flex-col gap-10 lg:flex-row lg:items-center lg:gap-16">
+        <img src="/images/top/sprout.svg" alt="" width="430" height="280" class="h-auto w-full max-w-[430px] shrink-0" />
+        <div>
+          <p class="eyebrow">ABOUT THIS EXPERIMENT</p>
+          <h2 class="mt-4 whitespace-pre-line font-serif text-[28px] font-semibold leading-[1.45] text-[var(--color-ink)] sm:text-[38px]">{ABOUT.title}</h2>
+          {ABOUT.body.map((p) => <p class="mt-5 text-[15px] leading-[2] text-[var(--color-ink-muted)] sm:text-[16px]">{p}</p>)}
+        </div>
       </div>
-    ) : (
-      <p class="rounded-2xl border border-dashed border-[var(--color-border)] p-10 text-center text-[var(--color-ink-muted)]">
-        まだ公開されている記事がありません。Notionで記事を作成し「公開」フラグをオンにすると、ここに表示されます。
-      </p>
-    )}
+
+      <div class="mt-20 lg:mt-[84px]">
+        <p class="eyebrow">THREE PATHS</p>
+        <h2 class="mt-4 font-serif text-[28px] font-semibold leading-[1.45] text-[var(--color-ink)] sm:text-[38px]">この場所を歩く、3つの道</h2>
+        <div class="mt-10 grid gap-6 md:grid-cols-3">
+          {THEMES.map((t) => (
+            <a href={themeHref(t.name)} class="group flex flex-col justify-between gap-6 rounded-[28px] bg-[var(--color-surface)] p-[26px] shadow-[0_10px_30px_0_rgba(72,24,34,0.07)] transition-shadow hover:shadow-[0_14px_36px_0_rgba(72,24,34,0.12)]">
+              <div class="flex items-start justify-between gap-4">
+                <div>
+                  <span class="flex size-[32px] items-center justify-center rounded-full bg-[var(--color-brand)] text-[10px] font-bold text-[var(--color-surface)]">{t.number}</span>
+                  <p class="mt-5 whitespace-pre-line font-serif text-[22px] font-semibold leading-[1.6] text-[var(--color-ink)] sm:text-[24px]">{t.cardTitle}</p>
+                </div>
+                <img src={`/images/themes/icon-${t.key}.png`} alt="" width="132" height="132" class="size-[96px] shrink-0 rounded-full" />
+              </div>
+              <p class="text-[13px] text-[var(--color-brand)] group-hover:underline">最新の記事を読む <span class="ml-2">→</span></p>
+            </a>
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 最近の、まだ途中の話 ===== -->
+  <section class="px-6 py-20 md:px-24 lg:py-[104px]">
+    <div class="mx-auto flex max-w-[1248px] flex-col gap-10 lg:flex-row lg:gap-[72px]">
+      <div class="lg:w-[380px] lg:shrink-0">
+        <p class="eyebrow">LATEST LOGS</p>
+        <h2 class="mt-4 whitespace-pre-line font-serif text-[28px] font-semibold leading-[1.45] text-[var(--color-ink)] sm:text-[38px]">{LATEST.title}</h2>
+        <p class="mt-5 text-[15px] leading-[2] text-[var(--color-ink-muted)]">{LATEST.body}</p>
+        <a href="/blog" class="mt-6 inline-flex items-center gap-2.5 text-[14px] font-medium text-[var(--color-brand)] hover:underline">実験ログをすべて見る<span class="text-[16px]">→</span></a>
+      </div>
+      <div class="flex min-w-0 flex-1 flex-col gap-[14px]">
+        {latestPosts.length === 0 && (
+          <p class="rounded-[20px] border border-dashed border-[var(--color-border)] p-10 text-center text-[14px] text-[var(--color-ink-muted)]">記録は、これから増えていきます。</p>
+        )}
+        {latestPosts.map((post) => {
+          const theme = findTheme(post.categories[0]);
+          return (
+            <a href={`/blog/${post.slug}`} class="group flex items-center gap-5 rounded-[18px] border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-5 sm:px-6">
+              {theme ? (
+                <img src={`/images/themes/icon-${theme.key}.png`} alt="" width="132" height="132" class="size-[56px] shrink-0 rounded-full sm:size-[72px]" />
+              ) : (
+                <span class="size-[56px] shrink-0 rounded-full bg-[var(--color-sand)] sm:size-[72px]"></span>
+              )}
+              <div class="min-w-0 flex-1">
+                <div class="flex flex-col-reverse gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                  <p class="font-serif text-[16px] font-semibold leading-[1.6] text-[var(--color-ink)] group-hover:text-[var(--color-brand)] sm:text-[18px]">{post.title}</p>
+                  <time datetime={post.publishedAt} class="shrink-0 pt-1 text-[11px] font-bold text-[var(--color-brand)]">{formatDateDot(post.publishedAt)}</time>
+                </div>
+                <p class="mt-1 line-clamp-1 text-[12px] text-[var(--color-ink-muted)]">{post.description}</p>
+              </div>
+            </a>
+          );
+        })}
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== A SMALL STORY ===== -->
+  <section class="bg-[var(--color-wine)] px-6 py-20 md:px-24 lg:py-[118px]">
+    <div class="mx-auto flex max-w-[1200px] flex-col gap-12 lg:flex-row lg:items-center lg:justify-between">
+      <div class="lg:max-w-[620px]">
+        <p class="eyebrow !text-[var(--color-on-wine-accent)]">A SMALL STORY</p>
+        <h2 class="mt-6 whitespace-pre-line font-serif text-[28px] font-semibold leading-[1.65] text-[var(--color-on-wine)] sm:text-[40px]">{STORY.title}</h2>
+        <p class="mt-6 text-[14px] leading-[2.1] text-[var(--color-on-wine-muted)]">{STORY.body}</p>
+        <a href={STORY.linkHref} class="mt-8 inline-flex h-[52px] items-center gap-2.5 rounded-full bg-[var(--color-surface)] px-6 text-[14px] font-medium text-[var(--color-brand)] hover:opacity-90">{STORY.linkLabel}<span class="text-[16px]">→</span></a>
+      </div>
+      <div class="relative mx-auto w-full max-w-[440px] shrink-0 lg:mx-0">
+        <img src="/images/top/story.svg" alt="" width="440" height="360" class="h-auto w-full" />
+        <p class="absolute top-[78%] left-[4%] w-[36%] whitespace-pre-line text-center text-[10px] leading-[1.7] text-[var(--color-on-wine-accent)] sm:text-[11px]">{STORY.note}</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== プロフィール ===== -->
+  <section class="bg-[var(--color-sand)] px-6 py-20 md:px-24 lg:py-[104px]">
+    <div class="mx-auto flex max-w-[1248px] flex-col gap-10 rounded-[28px] bg-[var(--color-surface)] p-6 shadow-[0_10px_30px_0_rgba(72,24,34,0.07)] sm:p-12 lg:flex-row lg:items-center lg:gap-14">
+      <div class="relative mx-auto w-full max-w-[310px] shrink-0 overflow-hidden rounded-[24px] lg:mx-0">
+        <img src="/images/author-portrait.svg" alt="" width="150" height="154" class="h-auto w-full" />
+        <p class="absolute bottom-[10%] left-[55%] flex items-center gap-1.5 text-[9px] text-[var(--color-brand)]">
+          <span class="size-[6px] rounded-full bg-[var(--color-accent)]"></span>{AUTHOR_PROFILE.label}
+        </p>
+      </div>
+      <div>
+        <p class="eyebrow">PROFILE / ABOUT THIS SITE</p>
+        <h2 class="mt-5 font-serif text-[22px] font-semibold leading-[1.6] text-[var(--color-ink)] sm:text-[26px]">{PROFILE.title}</h2>
+        {PROFILE.body.map((p) => <p class="mt-5 text-[14px] leading-[2] text-[var(--color-ink-muted)]">{p}</p>)}
+        <div class="mt-6 flex flex-wrap gap-3">
+          {PROFILE.facts.map((f) => <span class="rounded-full bg-[var(--color-sand)] px-[14px] py-[7px] text-[11px] text-[var(--color-brand)]">{f}</span>)}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== お問い合わせへの案内 ===== -->
+  <section class="relative overflow-hidden bg-[var(--color-theme-money)] px-6 pt-20 pb-36 md:px-24 lg:pt-[100px]">
+    <div class="relative z-10 mx-auto flex max-w-[1220px] flex-col gap-10 lg:flex-row lg:items-center lg:justify-between">
+      <div class="lg:max-w-[660px]">
+        <p class="text-[11px] font-bold text-[var(--color-brand)]">{CONTACT.eyebrow}</p>
+        <h2 class="mt-4 font-serif text-[30px] font-semibold text-[var(--color-ink)] sm:text-[40px]">{CONTACT.title}</h2>
+        <p class="mt-5 text-[15px] leading-[1.9] text-[var(--color-ink-muted)]">{CONTACT.body}</p>
+        <a href="/contact" class="mt-8 inline-flex h-[52px] items-center gap-2.5 rounded-full bg-[var(--color-brand)] px-7 text-[14px] font-medium text-[var(--color-surface)] hover:opacity-90">お問い合わせへ<span class="text-[16px]">→</span></a>
+      </div>
+      <div class="relative mx-auto w-full max-w-[420px] shrink-0 lg:mx-0">
+        <img src="/images/top/mailbox.svg" alt="" width="420" height="228" class="h-auto w-full" />
+        <p class="mt-2 text-right text-[11px] text-[var(--color-brand)] lg:pr-10">{CONTACT.note}</p>
+      </div>
+    </div>
+    <img src="/images/top/wave.svg" alt="" class="pointer-events-none absolute bottom-6 left-0 h-[90px] w-full sm:h-[122px]" />
   </section>
 </BaseLayout>
