@@ -1020,6 +1020,28 @@ function loadThumbnailPool(): Map<string, string[]> {
   return thumbnailPool;
 }
 
+// 代表記事のページID → テーマの英字（work / money / media）。getAllPosts の中で用意する。
+let featuredThemeByPageId: Map<string, string> = new Map();
+
+function buildFeaturedMap(categoryMeta: Map<string, CategoryMeta>): void {
+  featuredThemeByPageId = new Map();
+  for (const [name, meta] of categoryMeta) {
+    if (!meta.representativePageId) continue;
+    const theme = findTheme(normalizeCategory(name));
+    if (theme) featuredThemeByPageId.set(meta.representativePageId.replace(/-/g, ''), theme.key);
+  }
+}
+
+// public/images/thumbnails/featured/work.png など。ファイルが無ければ通常の選び方に戻る。
+function pickFeaturedThumbnail(pageId: string): string | null {
+  const key = featuredThemeByPageId.get(pageId.replace(/-/g, ''));
+  if (!key) return null;
+  for (const ext of ['png', 'webp', 'jpg']) {
+    if (existsSync(path.join(THUMBNAIL_POOL_DIR, 'featured', `${key}.${ext}`))) return `/images/thumbnails/featured/${key}.${ext}`;
+  }
+  return null;
+}
+
 function pickPoolThumbnail(categoryName: string | undefined, pageId: string): string | null {
   const theme = findTheme(categoryName);
   if (!theme) return null;
@@ -1070,6 +1092,7 @@ export async function getAllPosts(): Promise<Post[]> {
     getCategoryMeta(),
     loadAuthors().then((r) => r.byId),
   ]);
+  buildFeaturedMap(categoryMeta);
 
   do {
     const res: any = await notion.dataSources.query({
@@ -1095,8 +1118,10 @@ export async function getAllPosts(): Promise<Post[]> {
       // サムネイル：テーマごとに用意した画像（public/images/thumbnails/ の money-1.png など）から、
       // 記事のIDをもとに1枚を選ぶ。ビルドのたびに変わらないよう、同じ記事には常に同じ画像が当たる。
       // （Notionの「サムネイル画像」に画像が入っている記事だけは、そちらを優先する）
-      const rawThumbnail = getThumbnail(props[PROP.thumbnail]);
-      let thumbnail = rawThumbnail ? await downloadThumbnail(rawThumbnail, page.id) : null;
+      // マスターカテゴリDBで「代表記事」に選ばれている記事は、テーマを示す画像（時計・財布・Cの四角）にする。
+      const featuredThumbnail = pickFeaturedThumbnail(page.id);
+      const rawThumbnail = featuredThumbnail ? null : getThumbnail(props[PROP.thumbnail]);
+      let thumbnail = featuredThumbnail ?? (rawThumbnail ? await downloadThumbnail(rawThumbnail, page.id) : null);
       if (!thumbnail) thumbnail = pickPoolThumbnail(categories[0], page.id);
 
       const fallbackSlug = toSlug(page.id);
