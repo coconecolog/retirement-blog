@@ -1,5 +1,5 @@
 ---
-import { SITE, THEMES } from '../lib/site.config';
+import { SITE, THEMES, themeHref } from '../lib/site.config';
 const year = new Date().getFullYear();
 ---
 
@@ -18,9 +18,9 @@ const year = new Date().getFullYear();
       <div class="flex gap-16">
         <div class="flex flex-col gap-3">
           <p class="text-[10px] text-[var(--color-on-wine-accent)]">READ</p>
-          <a href="/blog" class="text-[12px] text-[var(--color-on-wine)] hover:underline">実験ログ</a>
+          <a href="/blog" class="text-[12px] text-[var(--color-on-wine)] hover:underline">ブログ</a>
           {THEMES.map((theme) => (
-            <a href={`/blog/category/${encodeURIComponent(theme.name)}`} class="text-[12px] text-[var(--color-on-wine)] hover:underline">{theme.name}</a>
+            <a href={themeHref(theme.name)} class="text-[12px] text-[var(--color-on-wine)] hover:underline">{theme.name}</a>
           ))}
         </div>
         <div class="flex flex-col gap-3">
