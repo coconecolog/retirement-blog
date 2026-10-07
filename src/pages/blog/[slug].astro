@@ -2,7 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getAllPosts } from '../../lib/notion';
 import { formatDateDot, estimateReadMinutes } from '../../lib/format';
-import { SITE, ARTICLE_SIGNATURE, ARTICLE_DISCLAIMER, AUTHOR_PROFILE, themeColor } from '../../lib/site.config';
+import { SITE, ARTICLE_SIGNATURE, ARTICLE_DISCLAIMER, AUTHOR_PROFILE, themeColor, themeHref } from '../../lib/site.config';
 
 export async function getStaticPaths() {
   const posts = await getAllPosts();
@@ -36,7 +36,7 @@ const hasFindings = findingsSeen;
 
 const readMinutes = estimateReadMinutes(post.html);
 const authorName: string = post.author?.name ?? AUTHOR_PROFILE.label;
-const categoryHref = primaryCategory ? `/blog/category/${encodeURIComponent(primaryCategory)}` : null;
+const categoryHref = primaryCategory ? themeHref(primaryCategory) : null;
 const toc: { id: string; text: string }[] = post.toc ?? [];
 
 const articleJsonLd = {
@@ -57,7 +57,7 @@ const breadcrumbJsonLd = {
   '@type': 'BreadcrumbList',
   itemListElement: [
     { '@type': 'ListItem', position: 1, name: 'ホーム', item: SITE.url },
-    { '@type': 'ListItem', position: 2, name: '実験ログ', item: new URL('/blog', SITE.url).toString() },
+    { '@type': 'ListItem', position: 2, name: 'ブログ', item: new URL('/blog', SITE.url).toString() },
     ...(primaryCategory
       ? [{ '@type': 'ListItem', position: 3, name: primaryCategory, item: new URL(categoryHref as string, SITE.url).toString() }]
       : []),
@@ -80,7 +80,7 @@ const breadcrumbJsonLd = {
       <nav class="flex flex-wrap items-center gap-[14px] text-[11px] text-[var(--color-ink-muted)]" aria-label="パンくずリスト">
         <a href="/" class="hover:text-[var(--color-brand)]">ホーム</a>
         <span>／</span>
-        <a href="/blog" class="hover:text-[var(--color-brand)]">実験ログ</a>
+        <a href="/blog" class="hover:text-[var(--color-brand)]">ブログ</a>
         {primaryCategory && (
           <>
             <span>／</span>
@@ -162,7 +162,7 @@ const breadcrumbJsonLd = {
 
         <!-- 一覧・テーマへの戻りリンク -->
         <div class="mt-12 flex flex-col gap-3 pt-4 pb-[88px] text-[13px] text-[var(--color-brand)] sm:flex-row sm:justify-between">
-          <a href="/blog" class="hover:underline">← 実験ログの一覧へ</a>
+          <a href="/blog" class="hover:underline">← ブログの一覧へ</a>
           {primaryCategory && <a href={categoryHref} class="hover:underline">「{primaryCategory}」を読む →</a>}
         </div>
       </div>
