@@ -17,7 +17,7 @@ export const SITE_DESCRIPTOR = 'TIME · MONEY · SMALL MEDIA';
 
 // ヘッダーのナビゲーション
 export const NAV = [
-  { label: 'ブログ', href: '/blog' },
+  { label: '実験ログ', href: '/blog' },
   { label: 'このサイトについて', href: '/about' },
 ];
 
