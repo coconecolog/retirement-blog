@@ -1,0 +1,16 @@
+---
+// テーマ（カテゴリ）名に添えるサブタイトル。「｜」の位置で改行されやすいよう、前後を分けて表示する。
+export interface Props {
+  text: string;
+  class?: string;
+}
+
+const { text, class: className = '' } = Astro.props;
+const parts = text.split('｜');
+---
+
+<p class={className}>
+  {parts.map((part, i) => (
+    <span class="inline-block">{part}{i < parts.length - 1 && '｜'}</span>
+  ))}
+</p>
