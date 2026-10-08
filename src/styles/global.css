@@ -35,6 +35,7 @@
   --color-theme-work: #e7cdd0;
   --color-theme-money: #e8d6a8;
   --color-theme-media: #dde2d3;
+  --color-common: #c7bfae;     /* 共通色（どのテーマにも属さないサムネイル・イラストの背景） */
 
   /* フッター内の文字色 */
   --color-on-wine: #fffdf8;
