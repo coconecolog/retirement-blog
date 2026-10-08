@@ -81,7 +81,7 @@ const breadcrumbJsonLd = {
 >
   <!-- ===== パンくず ===== -->
   <div class="px-6 pt-[30px] md:px-24">
-    <nav class="mx-auto flex max-w-[1004px] flex-wrap items-center gap-[14px] text-[11px] text-[var(--color-ink-muted)]" aria-label="パンくずリスト">
+    <nav class="mx-auto flex max-w-[1248px] flex-wrap items-center gap-[14px] text-[11px] text-[var(--color-ink-muted)]" aria-label="パンくずリスト">
       <a href="/" class="hover:text-[var(--color-brand)]">ホーム</a>
       <span>／</span>
       <a href="/blog" class="hover:text-[var(--color-brand)]">ブログ</a>
@@ -91,6 +91,8 @@ const breadcrumbJsonLd = {
           <a href={categoryHref} class="hover:text-[var(--color-brand)]">{primaryCategory}</a>
         </>
       )}
+      <span>／</span>
+      <span class="min-w-0 max-w-full truncate" aria-current="page">{post.title}</span>
     </nav>
   </div>
 

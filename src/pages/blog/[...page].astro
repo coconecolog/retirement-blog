@@ -3,6 +3,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostRow from '../../components/PostRow.astro';
 import Pagination from '../../components/Pagination.astro';
 import NoteBox from '../../components/NoteBox.astro';
+import ThemeSubtitle from '../../components/ThemeSubtitle.astro';
 import { getAllPosts, getCategoryMeta } from '../../lib/notion';
 import { estimateReadMinutes } from '../../lib/format';
 import { SITE, THEMES, BLOG_PAGE, themeHref } from '../../lib/site.config';
@@ -69,6 +70,7 @@ const paths = THEMES.map((theme) => {
               <div>
                 <p class="font-serif text-[22px] font-semibold text-[var(--color-ink)] sm:text-[24px]">{theme.pathTitle}</p>
                 <a href={themeHref(theme.name)} class="mt-2 inline-block text-[13px] font-medium text-[var(--color-brand)] hover:underline">{theme.name} →</a>
+                <ThemeSubtitle text={theme.subtitle} class="mt-1 text-[11px] leading-[1.8] text-[var(--color-ink-muted)]" />
               </div>
               <div class="col-span-2 md:col-span-1">
                 <p class="text-[11px] text-[var(--color-ink-muted)]">{theme.pathLead}</p>
