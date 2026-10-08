@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import ThemeSubtitle from '../components/ThemeSubtitle.astro';
 import { getAllPosts } from '../lib/notion';
 import { formatDateDot } from '../lib/format';
 import { SITE, THEMES, AUTHOR_PROFILE, findTheme, themeHref } from '../lib/site.config';
@@ -100,6 +101,7 @@ const websiteJsonLd = {
                 <div>
                   <span class="flex size-[32px] items-center justify-center rounded-full bg-[var(--color-brand)] text-[10px] font-bold text-[var(--color-surface)]">{t.number}</span>
                   <p class="mt-5 whitespace-pre-line font-serif text-[22px] font-semibold leading-[1.6] text-[var(--color-ink)] sm:text-[24px]">{t.cardTitle}</p>
+                  <ThemeSubtitle text={t.subtitle} class="mt-2 text-[12px] leading-[1.8] text-[var(--color-ink-muted)]" />
                 </div>
                 <img src={`/images/themes/icon-${t.key}.png`} alt="" width="132" height="132" class="size-[96px] shrink-0 rounded-full" />
               </div>

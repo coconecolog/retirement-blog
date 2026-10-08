@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import ThemeSubtitle from '../components/ThemeSubtitle.astro';
 import { SITE, THEMES, themeHref } from '../lib/site.config';
 
 // ===== 「このサイトについて」の文言（ここを書き換えると反映されます） =====
@@ -155,6 +156,7 @@ const readySocials = SOCIALS.filter((s) => s.url).length;
               <img src={`/images/themes/icon-${t.key}.png`} alt="" width="132" height="132" class="size-[72px] shrink-0 rounded-full" />
             </div>
             <p class="mt-5 font-serif text-[20px] font-semibold text-[var(--color-ink)]">{t.name}</p>
+            <ThemeSubtitle text={t.subtitle} class="mt-1 text-[12px] leading-[1.8] text-[var(--color-brand)]" />
             <ul class="mt-3 flex flex-col gap-1.5">
               {(THEME_NOTES[t.key] ?? []).map((n) => (
                 <li class="flex items-center gap-2 text-[12px] text-[var(--color-ink-muted)]"><span class="size-[5px] rounded-full bg-[var(--color-accent)]"></span>{n}</li>
