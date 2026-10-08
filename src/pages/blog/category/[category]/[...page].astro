@@ -3,6 +3,7 @@ import BaseLayout from '../../../../layouts/BaseLayout.astro';
 import PostCard from '../../../../components/PostCard.astro';
 import Pagination from '../../../../components/Pagination.astro';
 import NoteBox from '../../../../components/NoteBox.astro';
+import ThemeSubtitle from '../../../../components/ThemeSubtitle.astro';
 import { getAllPosts, getCategoryMeta } from '../../../../lib/notion';
 import { formatDateDot, estimateReadMinutes } from '../../../../lib/format';
 import { SITE, THEMES, themeHref, themeColor } from '../../../../lib/site.config';
@@ -50,8 +51,6 @@ const shownTo = shownFrom + page.data.length - 1;
       <nav class="flex flex-wrap items-center gap-[14px] text-[11px] text-[var(--color-ink-muted)]" aria-label="パンくずリスト">
         <a href="/" class="hover:text-[var(--color-brand)]">ホーム</a>
         <span>／</span>
-        <a href="/#themes" class="hover:text-[var(--color-brand)]">3つのテーマ</a>
-        <span>／</span>
         <span>{category}</span>
       </nav>
 
@@ -59,6 +58,7 @@ const shownTo = shownFrom + page.data.length - 1;
         <div class="max-w-[784px]">
           <p class="eyebrow whitespace-pre">{`THEME ${theme.number}  /  ${theme.en}`}</p>
           <h1 class="mt-6 font-serif text-[36px] font-semibold leading-[1.5] text-[var(--color-ink)] sm:text-[46px]">{category}</h1>
+          <ThemeSubtitle text={theme.subtitle} class="mt-3 font-serif text-[16px] leading-[1.7] text-[var(--color-brand)] sm:text-[19px]" />
           <div class="mt-6 text-[15px] leading-[2] text-[var(--color-ink-muted)]">
             {theme?.tagline && <p>{theme.tagline}</p>}
             <p>{theme?.intro || meta?.description}</p>
@@ -83,7 +83,7 @@ const shownTo = shownFrom + page.data.length - 1;
           {theme?.startHereNote && <p class="text-[12px] text-[var(--color-ink-muted)]">{theme.startHereNote}</p>}
         </div>
         <a href={`/blog/${startHere.slug}`} class="group mt-6 flex flex-col gap-8 rounded-[24px] bg-[var(--color-surface)] p-6 md:flex-row md:items-center md:gap-10">
-          <div class="aspect-[16/9] w-full shrink-0 overflow-hidden rounded-[16px] md:w-[384px]" style={`background-color: ${themeColor(category)}`}>
+          <div class="aspect-[16/9] w-full shrink-0 overflow-hidden rounded-[16px] md:w-[384px]" style={`background-color: ${themeColor(startHere.categories[0])}`}>
             {startHere.thumbnail && <img src={startHere.thumbnail} alt="" class="h-full w-full object-cover" />}
           </div>
           <div class="min-w-0 flex-1 md:pr-4">
@@ -149,6 +149,7 @@ const shownTo = shownFrom + page.data.length - 1;
             <img src={`/images/themes/circle-${t.key}.svg`} alt="" width="150" height="150" class="size-[110px] shrink-0 sm:size-[150px]" />
             <div class="min-w-0">
               <p class="font-serif text-[20px] font-semibold text-[var(--color-ink)] sm:text-[24px]">{t.name}</p>
+              <ThemeSubtitle text={t.subtitle} class="mt-1 text-[12px] leading-[1.7] text-[var(--color-brand)]" />
               <p class="mt-3 text-[13px] leading-[1.9] text-[var(--color-ink-muted)]">{t.blurb}</p>
               <p class="mt-3 text-[12px] text-[var(--color-brand)] group-hover:underline">このテーマを読む →</p>
             </div>
