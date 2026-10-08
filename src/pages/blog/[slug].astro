@@ -27,12 +27,17 @@ const { post, neighbors, primaryCategory } = Astro.props as any;
 
 // 黄色のコールアウト（今回わかったこと）が複数ある場合、目次からのジャンプ先は最初の1つだけにする。
 let findingsSeen = false;
-const html: string = post.html.replace(/ id="findings"/g, (m: string) => {
+const bodyHtml: string = post.html.replace(/ id="findings"/g, (m: string) => {
   if (findingsSeen) return '';
   findingsSeen = true;
   return m;
 });
 const hasFindings = findingsSeen;
+
+// 本文の先頭が画像なら、それをキービジュアルとして本文から切り出し、目次より上に置く。
+const keyVisualMatch = bodyHtml.match(/^\s*(<figure class="notion-figure">[\s\S]*?<\/figure>)/);
+const keyVisual: string | null = keyVisualMatch ? keyVisualMatch[1] : null;
+const html: string = keyVisual ? bodyHtml.slice(keyVisualMatch![0].length) : bodyHtml;
 
 const readMinutes = estimateReadMinutes(post.html);
 const authorName: string = post.author?.name ?? AUTHOR_PROFILE.label;
@@ -108,6 +113,9 @@ const breadcrumbJsonLd = {
             <span>約{readMinutes}分で読めます</span>
           </div>
         </header>
+
+        <!-- キービジュアル（本文の先頭の画像） -->
+        {keyVisual && <div class="prose max-w-none mb-12 [&_.notion-figure]:my-0" set:html={keyVisual} />}
 
         <!-- スマホ用の目次（本文の前に表示） -->
         {toc.length > 0 && (
