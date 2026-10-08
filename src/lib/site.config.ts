@@ -34,6 +34,8 @@ export type Theme = {
   en: string;
   // トップの「3つの道」カードの表示（\n で改行）
   cardTitle: string;
+  // カテゴリ名に必ず添えるサブタイトル（「｜」の位置で改行しやすくなります）
+  subtitle: string;
   color: string;
   // テーマページ冒頭
   tagline: string;
@@ -55,6 +57,7 @@ export const THEMES: Theme[] = [
     number: '01',
     en: 'WORK & LIFE',
     cardTitle: '働き方と\nこれからのこと',
+    subtitle: '8時間労働からの脱却｜自分時間のつくり方',
     color: 'var(--color-theme-work)',
     tagline: '働くことと、生きること。そのあいだに、私の余白を。',
     intro: '週5日・8時間を当たり前にしてきた毎日から、少しずつ距離を置いてみる。辞めるか、続けるかを急いで決めずに、これからの時間と暮らしを整える記録です。',
@@ -71,6 +74,7 @@ export const THEMES: Theme[] = [
     number: '02',
     en: 'MONEY & LIFE',
     cardTitle: 'お金と暮らし',
+    subtitle: '50代からの資産運用｜「減らさない＆増やす」土台',
     color: 'var(--color-theme-money)',
     tagline: '増やす話の前に、いまの暮らしの現在地から。',
     intro: '気づけば積み上がってきた資産。ここから戦略的になるために、基礎から学んでいきます。残すお金、使いたいお金、試すためのお金を、私の暮らしの言葉で捉え直す記録です。',
@@ -87,6 +91,7 @@ export const THEMES: Theme[] = [
     number: '03',
     en: 'MY SMALL MEDIA',
     cardTitle: '自分の小さな\nメディア',
+    subtitle: '経験を型に変える｜Webストック収入',
     color: 'var(--color-theme-media)',
     tagline: '経験や好きなことに、私だけの小さな居場所を。',
     intro: '詳しくなくても、AIと話しながらなら一歩ずつ。作ってみたこと、困ったこと、直してみたことを、自分のペースで残します。速さや完成度より、自分の声が残る場所を育てる記録です。',

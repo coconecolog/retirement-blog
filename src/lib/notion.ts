@@ -949,7 +949,7 @@ function renderContentWithToc(markdown: string): { html: string; toc: TocItem[] 
   const renderer = new Renderer();
   renderer.heading = function (this: any, { tokens, depth }: any) {
     const inner = this.parser.parseInline(tokens);
-    const text = inner.replace(/<[^>]+>/g, '').trim();
+    const text = decodeEntities(inner.replace(/<[^>]+>/g, '')).trim();
 
     if (depth === 2) {
       h2Count += 1;
@@ -988,70 +988,109 @@ function renderContentWithToc(markdown: string): { html: string; toc: TocItem[] 
   return { html, toc };
 }
 
+// HTMLの文字参照（&amp; など）を元の文字に戻す。目次・抜粋はAstro側で改めてエスケープされるため。
+function decodeEntities(text: string): string {
+  return text
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#0*39;|&apos;/g, "'")
+    .replace(/&amp;/g, '&');
+}
+
+// 一覧カードなどに出す抜粋。本文に含まれるHTML（画像・表・コールアウトなど）のタグは取り除き、文章だけを使う。
 function makeExcerpt(markdown: string, length = 110): string {
-  const plain = markdown
-    .replace(/```[\s\S]*?```/g, '')
-    .replace(/!\[.*?\]\(.*?\)/g, '')
-    .replace(/\[(.*?)\]\(.*?\)/g, '$1')
-    .replace(/[#*`>_\-]/g, '')
+  const plain = decodeEntities(
+    markdown
+      .replace(/```[\s\S]*?```/g, '')
+      .replace(/<figure[\s\S]*?<\/figure>/gi, ' ')
+      .replace(/<table[\s\S]*?<\/table>/gi, ' ')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/<[^>]*$/g, '')
+      .replace(/!\[.*?\]\(.*?\)/g, '')
+      .replace(/\[(.*?)\]\(.*?\)/g, '$1')
+      .replace(/[#*`>_\-]/g, ''),
+  )
     .replace(/\s+/g, ' ')
     .trim();
   return plain.length > length ? plain.slice(0, length) + '…' : plain;
 }
 
 // ===== テーマ別サムネイル =====
-// public/images/thumbnails/ に「テーマの英字-名前.拡張子」（例：money-cups.png）で置いた画像を読み込む。
-// 先頭が work / money / media の画像はそのテーマ専用、common の画像はすべてのテーマで使う。
+// public/images/thumbnails/ に「色-絵柄.拡張子」（例：money-cups.png）で置いた画像を使う。
+// 色は work / money / media（テーマ色）と common（共通色）の4種類。絵柄（cups など）ごとに4色そろえてある。
+// 記事ごとに「絵柄」と「テーマ色か共通色か」を記事IDから決めるので、カテゴリを変えても絵柄は同じまま、色だけが変わる。
 const THUMBNAIL_POOL_DIR = path.join(process.cwd(), 'public', 'images', 'thumbnails');
-let thumbnailPool: Map<string, string[]> | null = null;
+// 共通色を使う割合（3記事に1記事くらい）
+const COMMON_THUMBNAIL_EVERY = 3;
+let thumbnailPool: Map<string, Map<string, string>> | null = null;
 
-function loadThumbnailPool(): Map<string, string[]> {
+// 絵柄 → (色 → 画像のURL)
+function loadThumbnailPool(): Map<string, Map<string, string>> {
   if (thumbnailPool) return thumbnailPool;
   thumbnailPool = new Map();
   if (!existsSync(THUMBNAIL_POOL_DIR)) return thumbnailPool;
   const files = readdirSync(THUMBNAIL_POOL_DIR)
-    .filter((f) => /\.(png|jpe?g|webp)$/i.test(f))
+    .filter((f) => /^[a-z]+-.+\.(png|jpe?g|webp)$/i.test(f))
     .sort((a, b) => a.localeCompare(b, 'en', { numeric: true }));
   for (const file of files) {
-    const key = file.split('-')[0].toLowerCase();
-    if (!thumbnailPool.has(key)) thumbnailPool.set(key, []);
-    thumbnailPool.get(key)!.push(`/images/thumbnails/${file}`);
+    const color = file.split('-')[0].toLowerCase();
+    const motif = file.slice(color.length + 1).replace(/\.[^.]+$/, '').toLowerCase();
+    if (!thumbnailPool.has(motif)) thumbnailPool.set(motif, new Map());
+    const byColor = thumbnailPool.get(motif)!;
+    if (!byColor.has(color)) byColor.set(color, `/images/thumbnails/${file}`);
   }
   return thumbnailPool;
 }
 
-// 代表記事のページID → テーマの英字（work / money / media）。getAllPosts の中で用意する。
-let featuredThemeByPageId: Map<string, string> = new Map();
+function hashPageId(pageId: string): number {
+  let hash = 0;
+  for (const ch of pageId.replace(/-/g, '')) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  return hash;
+}
+
+// 代表記事のページID → 代表記事に選ばれているテーマの英字（work / money / media）。getAllPosts の中で用意する。
+let featuredThemesByPageId: Map<string, Set<string>> = new Map();
 
 function buildFeaturedMap(categoryMeta: Map<string, CategoryMeta>): void {
-  featuredThemeByPageId = new Map();
+  featuredThemesByPageId = new Map();
   for (const [name, meta] of categoryMeta) {
     if (!meta.representativePageId) continue;
     const theme = findTheme(normalizeCategory(name));
-    if (theme) featuredThemeByPageId.set(meta.representativePageId.replace(/-/g, ''), theme.key);
+    if (!theme) continue;
+    const id = meta.representativePageId.replace(/-/g, '');
+    if (!featuredThemesByPageId.has(id)) featuredThemesByPageId.set(id, new Set());
+    featuredThemesByPageId.get(id)!.add(theme.key);
   }
 }
 
-// public/images/thumbnails/featured/work.png など。ファイルが無ければ通常の選び方に戻る。
-function pickFeaturedThumbnail(pageId: string): string | null {
-  const key = featuredThemeByPageId.get(pageId.replace(/-/g, ''));
-  if (!key) return null;
+// 代表記事用の画像（public/images/thumbnails/featured/work.png など。時計・財布・Cの四角）。
+// 記事自身のカテゴリと、代表記事に選ばれているテーマが同じときだけ使う（色を記事のカテゴリに合わせるため）。
+// 使えない場合は null を返し、通常の選び方に戻る。
+function pickFeaturedThumbnail(pageId: string, categoryName: string | undefined): string | null {
+  const theme = findTheme(categoryName);
+  const featuredKeys = featuredThemesByPageId.get(pageId.replace(/-/g, ''));
+  if (!theme || !featuredKeys?.has(theme.key)) return null;
   for (const ext of ['png', 'webp', 'jpg']) {
-    if (existsSync(path.join(THUMBNAIL_POOL_DIR, 'featured', `${key}.${ext}`))) return `/images/thumbnails/featured/${key}.${ext}`;
+    if (existsSync(path.join(THUMBNAIL_POOL_DIR, 'featured', `${theme.key}.${ext}`))) return `/images/thumbnails/featured/${theme.key}.${ext}`;
   }
   return null;
 }
 
 function pickPoolThumbnail(categoryName: string | undefined, pageId: string): string | null {
+  const pool = loadThumbnailPool();
+  const motifs = [...pool.keys()].sort();
+  if (motifs.length === 0) return null;
+  const hash = hashPageId(pageId);
+  const byColor = pool.get(motifs[hash % motifs.length])!;
   const theme = findTheme(categoryName);
-  if (!theme) return null;
-  // テーマ色の画像（work-〜 など）＋共通の画像（common-〜）の中から選ぶ
-  const all = loadThumbnailPool();
-  const pool = [...(all.get(theme.key) ?? []), ...(all.get('common') ?? [])];
-  if (pool.length === 0) return null;
-  let hash = 0;
-  for (const ch of pageId.replace(/-/g, '')) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
-  return pool[hash % pool.length];
+  const useCommon = !theme || Math.floor(hash / motifs.length) % COMMON_THUMBNAIL_EVERY === 0;
+  const order = useCommon ? ['common', theme?.key] : [theme!.key, 'common'];
+  for (const color of order) {
+    if (color && byColor.has(color)) return byColor.get(color)!;
+  }
+  return null;
 }
 
 export async function getAllPosts(): Promise<Post[]> {
@@ -1115,11 +1154,11 @@ export async function getAllPosts(): Promise<Post[]> {
       // categories：旧カテゴリ名を3つのテーマ名にそろえたもの（サイトの表示・テーマページの振り分けに使う）
       const rawCategories: string[] = getRelationNames(props[PROP.category], categoryNameMap);
       const categories: string[] = [...new Set(rawCategories.map(normalizeCategory))];
-      // サムネイル：テーマごとに用意した画像（public/images/thumbnails/ の money-1.png など）から、
-      // 記事のIDをもとに1枚を選ぶ。ビルドのたびに変わらないよう、同じ記事には常に同じ画像が当たる。
+      // サムネイル：テーマごとに用意した画像（public/images/thumbnails/ の money-cups.png など）から、
+      // 記事のIDをもとに1枚を選ぶ。ビルドのたびに変わらないよう、同じ記事には常に同じ絵柄が当たり、色は記事のカテゴリに合わせる。
       // （Notionの「サムネイル画像」に画像が入っている記事だけは、そちらを優先する）
-      // マスターカテゴリDBで「代表記事」に選ばれている記事は、テーマを示す画像（時計・財布・Cの四角）にする。
-      const featuredThumbnail = pickFeaturedThumbnail(page.id);
+      // マスターカテゴリDBで「代表記事」に選ばれ、かつ記事自身もそのテーマのカテゴリの記事は、テーマを示す画像（時計・財布・Cの四角）にする。
+      const featuredThumbnail = pickFeaturedThumbnail(page.id, categories[0]);
       const rawThumbnail = featuredThumbnail ? null : getThumbnail(props[PROP.thumbnail]);
       let thumbnail = featuredThumbnail ?? (rawThumbnail ? await downloadThumbnail(rawThumbnail, page.id) : null);
       if (!thumbnail) thumbnail = pickPoolThumbnail(categories[0], page.id);
