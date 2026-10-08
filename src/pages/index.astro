@@ -1,202 +1,318 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro';
-import { getAllPosts } from '../lib/notion';
-import { formatDateDot } from '../lib/format';
-import { SITE, THEMES, AUTHOR_PROFILE, findTheme, themeHref } from '../lib/site.config';
+// トップページ。文言・リンクは src/data/home.ts にまとめています（文言の修正はそちらだけでOK）。
+// 構成: ヒーロー → 01 課題から探す → 02 実務で使う資料・分析ツール → 03 新着記事 → 04 ご要望・ご質問
+// ・02の資料: 資料DB「トップ掲載」（1 = 大きい枠、2・3 = 小さい枠）。空いた枠は新しい資料から自動で埋める。
+// ・03の記事: 新しい順に自動表示（件数は HOME_LATEST.count）。
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getLibraryItems } from "@/lib/library";
+import { getAllResources } from "@/lib/resources";
+import { SITE_NAME, SITE_DESCRIPTION } from "@/consts";
+import { buildOrganizationSchema } from "@/lib/schema";
+import {
+  HOME_HERO,
+  HOME_ISSUES,
+  HOME_MATERIALS,
+  HOME_TOOLS_TABLE,
+  HOME_LATEST,
+  HOME_REQUEST,
+} from "@/data/home";
 
-// ===== トップページの文言（ここを書き換えると反映されます） =====
-const HERO = {
-  kicker: '働き方・お金',
-  // 改行したい位置に \n を入れてください
-  title: '50代から育てる、\n自分時間と小さな資産の\nポートフォリオ',
-  lead: '気づけば積み上がってきた経験と知見。これからの働き方や暮らしに向けた様々な試みを、リアルに実践・公開していきます。',
-};
-const ABOUT = {
-  title: '暮らしと仕事のあいだに、\n自分らしい余白をつくる。',
-  body: [
-    '週5日・8時間の拘束から少しずつ距離を置き、時間と収入を自分のペースで育てるための実験ログです。',
-    'AI、資産、働き方の成功も失敗も、なるべく温度が残るうちに記録します。',
-  ],
-};
-const LATEST = {
-  title: '最近の、\nまだ途中の話',
-  body: 'うまくいったら続ける。違ったら戻す。人生を大きく賭けずに、暮らしの手触りを少しずつ変えていきます。',
-  count: 4,
-};
-const STORY = {
-  title: '時間も資産も、\n「どれだけあるか」から\n「どう使いたいか」へ。',
-  body: '会社員として長く働くうち、いろいろなものが自然と増えていきました。これからは、少しずつ減らして整理していくこと。何に注げば自分の暮らしが育つのかを知ることかもしれません。',
-  linkLabel: 'この話の続きを読む',
-  linkHref: '/about',
-  note: 'ためるだけでなく、\n何に注ぐかを考える。',
-};
-const PROFILE = {
-  title: '会社員を続けながら、これからの働き方を試しています。',
-  body: [
-    '50代、会社員。長く働いて、少しの資産と、たくさんの「このままでいいのかな」が残りました。ここは、これからの働き方や資産の育て方についての、試行錯誤の記録です。',
-    '誰もが、自分のペースで時間と収入を育てられる未来へ。あなたの参考になればうれしく思います。',
-  ],
-  facts: ['会社員歴27年', 'AIは独学中', '投資は慎重派', '寄り道多め'],
-};
-const CONTACT = {
-  eyebrow: 'LETTER FROM THE MIDDLE OF THE ROAD',
-  title: '問いの途中で、話してみる。',
-  body: '記事へのご感想や、聞いてみたいこと。途中のままの言葉でも、お気軽にお寄せください。',
-  note: 'ゆっくり、ポストへ。',
-};
-// ============================================================
+const organizationSchema = buildOrganizationSchema();
 
-const latestPosts = (await getAllPosts()).slice(0, LATEST.count);
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`;
+}
 
-const websiteJsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'WebSite',
-  name: SITE.title,
-  url: SITE.url,
-  description: SITE.description,
-};
+// 02 資料: 「トップ掲載」の数字が小さい順 → 足りない分は新しい順で補完し、3件にする。
+const allResources = getAllResources();
+const pinnedResources = allResources
+  .filter((r) => typeof r.homeOrder === "number")
+  .sort((a, b) => (a.homeOrder as number) - (b.homeOrder as number));
+const homeResources = [...pinnedResources, ...allResources.filter((r) => !pinnedResources.includes(r))].slice(0, 3);
+const mainResource = homeResources[0];
+const subResources = homeResources.slice(1, 3);
+
+// 03 新着記事
+const latestPosts = getLibraryItems("post")
+  .slice(0, HOME_LATEST.count)
+  .map((item) => ({
+    ...item,
+    readTime: item.metaLabel ? item.metaLabel.replace(/^◷\s*/, "") : null,
+  }));
 ---
 
-<BaseLayout jsonLd={websiteJsonLd}>
-  <!-- ===== ヒーロー ===== -->
-  <section class="px-6 pt-12 pb-20 md:px-24 lg:pt-16 lg:pb-24">
-    <div class="mx-auto flex max-w-[1248px] flex-col gap-12 lg:flex-row lg:items-center lg:justify-between">
-      <div class="relative z-10 lg:max-w-[640px]">
-        <p class="eyebrow">{HERO.kicker}</p>
-        <h1 class="mt-6 whitespace-pre-line font-serif text-[27px] font-semibold leading-[1.5] text-[var(--color-ink)] sm:text-[44px] xl:text-[56px] xl:leading-[1.4]">{HERO.title}</h1>
-        <p class="mt-6 max-w-[540px] text-[16px] leading-[1.9] text-[var(--color-ink-muted)] sm:text-[20px]">{HERO.lead}</p>
-        <div class="mt-8 flex flex-wrap items-center gap-[18px]">
-          <a href="/blog" class="inline-flex h-[52px] items-center gap-2.5 rounded-full bg-[var(--color-brand)] px-6 text-[14px] font-medium text-[var(--color-surface)] hover:opacity-90">実験ログを読む<span class="text-[16px]">→</span></a>
-          <a href="/about" class="inline-flex items-center gap-2.5 text-[14px] font-medium text-[var(--color-brand)] hover:underline">この場所について<span class="text-[16px]">→</span></a>
-        </div>
-      </div>
-      <div class="relative mx-auto w-full max-w-[560px] shrink-0 lg:mx-0">
-        <img src="/images/top/hero.svg" alt="" width="560" height="580" class="h-auto w-full" />
-        <p class="absolute top-[44%] left-[1%] w-[27%] text-center text-[10px] leading-[1.6] text-[var(--color-brand)] sm:text-[11px]">急がない。<br />でも、止まらない。</p>
-        <p class="absolute top-[71.5%] left-[65%] w-[21%] text-center text-[10px] leading-[1.6] text-[var(--color-brand)] sm:text-[11px]">暮らしの余白を<br />少しずつ。</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- ===== この場所について＋3つの道 ===== -->
-  <section id="themes" class="scroll-mt-6 bg-[var(--color-sand)] px-6 py-20 md:px-24 lg:py-[104px]">
-    <div class="mx-auto max-w-[1248px]">
-      <div class="flex flex-col gap-10 lg:flex-row lg:items-center lg:gap-16">
-        <img src="/images/top/sprout.svg" alt="" width="430" height="280" class="h-auto w-full max-w-[430px] shrink-0" />
+<BaseLayout title={SITE_NAME} description={SITE_DESCRIPTION} ogImage="/open-graph/default.png" pagefindIgnore jsonLd={organizationSchema}>
+  <div class="bg-white text-ink-950">
+    {/* ===== ヒーロー ===== */}
+    <section>
+      <div class="mx-auto grid max-w-6xl items-center gap-12 px-5 pb-16 pt-14 md:pt-20 lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-16">
         <div>
-          <p class="eyebrow">ABOUT THIS EXPERIMENT</p>
-          <h2 class="mt-4 whitespace-pre-line font-serif text-[28px] font-semibold leading-[1.45] text-[var(--color-ink)] sm:text-[38px]">{ABOUT.title}</h2>
-          {ABOUT.body.map((p) => <p class="mt-5 text-[15px] leading-[2] text-[var(--color-ink-muted)] sm:text-[16px]">{p}</p>)}
+          <p class="flex items-center gap-3 text-sm font-bold">
+            <span class="h-[3px] w-6 bg-ink-950" aria-hidden="true"></span>
+            {HOME_HERO.eyebrow}
+          </p>
+          <h1 class="mt-6 text-[1.85rem] font-extrabold leading-[1.35] tracking-tight md:text-5xl md:leading-[1.3]">
+            {HOME_HERO.titleLines.map((line) => (
+              <span class="block">{line}</span>
+            ))}
+          </h1>
+          <p class="mt-7 text-[0.95rem] leading-[1.95] text-neutral-700">
+            {HOME_HERO.descriptionLines.map((line) => (
+              <span class="md:block">{line}</span>
+            ))}
+          </p>
+          <div class="mt-8 flex flex-wrap gap-3">
+            <a href={HOME_HERO.primaryCta.href} class="inline-flex items-center gap-4 border border-ink-950 bg-ink-950 px-6 py-3.5 text-sm font-bold text-white transition-colors hover:bg-neutral-800">
+              {HOME_HERO.primaryCta.label}
+              <span aria-hidden="true">→</span>
+            </a>
+            <a href={HOME_HERO.secondaryCta.href} class="inline-flex items-center gap-4 border border-neutral-300 bg-white px-6 py-3.5 text-sm font-bold text-ink-950 transition-colors hover:border-ink-950">
+              {HOME_HERO.secondaryCta.label}
+              <span aria-hidden="true">→</span>
+            </a>
+          </div>
+          <p class="mt-6 text-xs text-neutral-500">{HOME_HERO.footnote}</p>
+        </div>
+        <div class="mx-auto w-full max-w-[400px]">
+          <img src={HOME_HERO.image.src} alt={HOME_HERO.image.alt} width="510" height="720" class="h-auto w-full" />
         </div>
       </div>
+    </section>
 
-      <div class="mt-20 lg:mt-[84px]">
-        <p class="eyebrow">THREE PATHS</p>
-        <h2 class="mt-4 font-serif text-[28px] font-semibold leading-[1.45] text-[var(--color-ink)] sm:text-[38px]">この場所を歩く、3つの道</h2>
-        <div class="mt-10 grid gap-6 md:grid-cols-3">
-          {THEMES.map((t) => (
-            <a href={themeHref(t.name)} class="group flex flex-col justify-between gap-6 rounded-[28px] bg-[var(--color-surface)] p-[26px] shadow-[0_10px_30px_0_rgba(72,24,34,0.07)] transition-shadow hover:shadow-[0_14px_36px_0_rgba(72,24,34,0.12)]">
-              <div class="flex items-start justify-between gap-4">
-                <div>
-                  <span class="flex size-[32px] items-center justify-center rounded-full bg-[var(--color-brand)] text-[10px] font-bold text-[var(--color-surface)]">{t.number}</span>
-                  <p class="mt-5 whitespace-pre-line font-serif text-[22px] font-semibold leading-[1.6] text-[var(--color-ink)] sm:text-[24px]">{t.cardTitle}</p>
-                </div>
-                <img src={`/images/themes/icon-${t.key}.png`} alt="" width="132" height="132" class="size-[96px] shrink-0 rounded-full" />
+    {/* ===== 01 課題から探す ===== */}
+    <section id="issues" class="bg-ink-950 text-white">
+      <div class="mx-auto max-w-6xl px-5 py-16 md:py-20">
+        <div class="grid gap-6 md:grid-cols-[minmax(0,1fr)_340px] md:items-end">
+          <div>
+            <p class="text-xs font-bold text-white/60">01　{HOME_ISSUES.eyebrow}</p>
+            <h2 class="mt-4 text-2xl font-extrabold tracking-tight md:text-[2rem]">{HOME_ISSUES.heading}</h2>
+          </div>
+          <p class="text-sm leading-relaxed text-white/70">{HOME_ISSUES.lead}</p>
+        </div>
+
+        <div class="mt-12 grid gap-12 md:grid-cols-3 md:gap-10">
+          {HOME_ISSUES.items.map((item, i) => (
+            <div id={`issue-${i + 1}`} class="flex scroll-mt-24 flex-col">
+              <p class="text-4xl font-light tracking-tight text-white/90">{String(i + 1).padStart(2, "0")}</p>
+              <h3 class="mt-4 text-xl font-extrabold md:text-2xl">{item.title}</h3>
+              <p class="mt-3 text-xs font-bold text-white/60">{item.label}</p>
+              <p class="mt-4 text-sm leading-[1.9] text-white/80">{item.description}</p>
+              <ul class="mt-6 space-y-2 text-sm text-white/80">
+                {item.bullets.map((b) => (
+                  <li class="flex items-start gap-3">
+                    <span class="mt-[0.55em] h-1.5 w-1.5 shrink-0 bg-white" aria-hidden="true"></span>
+                    <span>{b}</span>
+                  </li>
+                ))}
+              </ul>
+              <div class="mt-auto pt-8">
+                <a href={item.link.href} class="flex items-center justify-between gap-4 border-t border-white/20 pt-5 text-sm font-bold hover:underline">
+                  {item.link.label}
+                  <span aria-hidden="true">→</span>
+                </a>
               </div>
-              <p class="text-[13px] text-[var(--color-brand)] group-hover:underline">最新の実験ログを読む <span class="ml-2">→</span></p>
-            </a>
+            </div>
           ))}
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- ===== 最近の、まだ途中の話 ===== -->
-  <section class="px-6 py-20 md:px-24 lg:py-[104px]">
-    <div class="mx-auto flex max-w-[1248px] flex-col gap-10 lg:flex-row lg:gap-[72px]">
-      <div class="lg:w-[380px] lg:shrink-0">
-        <p class="eyebrow">LATEST LOGS</p>
-        <h2 class="mt-4 whitespace-pre-line font-serif text-[28px] font-semibold leading-[1.45] text-[var(--color-ink)] sm:text-[38px]">{LATEST.title}</h2>
-        <p class="mt-5 text-[15px] leading-[2] text-[var(--color-ink-muted)]">{LATEST.body}</p>
-        <a href="/blog" class="mt-6 inline-flex items-center gap-2.5 text-[14px] font-medium text-[var(--color-brand)] hover:underline">実験ログをすべて見る<span class="text-[16px]">→</span></a>
-      </div>
-      <div class="flex min-w-0 flex-1 flex-col gap-[14px]">
-        {latestPosts.length === 0 && (
-          <p class="rounded-[20px] border border-dashed border-[var(--color-border)] p-10 text-center text-[14px] text-[var(--color-ink-muted)]">記録は、これから増えていきます。</p>
-        )}
-        {latestPosts.map((post) => {
-          const theme = findTheme(post.categories[0]);
-          return (
-            <a href={`/blog/${post.slug}`} class="group flex items-center gap-5 rounded-[18px] border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-5 sm:px-6">
-              {theme ? (
-                <img src={`/images/themes/icon-${theme.key}.png`} alt="" width="132" height="132" class="size-[56px] shrink-0 rounded-full sm:size-[72px]" />
-              ) : (
-                <span class="size-[56px] shrink-0 rounded-full bg-[var(--color-sand)] sm:size-[72px]"></span>
-              )}
-              <div class="min-w-0 flex-1">
-                <div class="flex flex-col-reverse gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                  <p class="font-serif text-[16px] font-semibold leading-[1.6] text-[var(--color-ink)] group-hover:text-[var(--color-brand)] sm:text-[18px]">{post.title}</p>
-                  <time datetime={post.publishedAt} class="shrink-0 pt-1 text-[11px] font-bold text-[var(--color-brand)]">{formatDateDot(post.publishedAt)}</time>
+    {/* ===== 02 実務で使う資料・分析ツール ===== */}
+    <section id="materials" class="scroll-mt-20">
+      <div class="mx-auto max-w-6xl px-5 py-16 md:py-20">
+        <p class="text-xs font-bold text-neutral-500">02　{HOME_MATERIALS.eyebrow}</p>
+        <h2 class="mt-4 text-2xl font-extrabold tracking-tight md:text-[2rem]">{HOME_MATERIALS.heading}</h2>
+
+        {
+          mainResource && (
+            <div class="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1.75fr)_minmax(0,1fr)]">
+              {/* 大きい枠（トップ掲載 = 1） */}
+              <div class="grid gap-8 bg-neutral-100 p-6 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)] sm:items-center md:p-10">
+                <a href={`/resources/${mainResource.slug}`} class="mx-auto block w-full max-w-[200px] sm:max-w-none" aria-hidden="true" tabindex="-1">
+                  <div class="aspect-[3/4] w-full bg-white p-5 shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
+                    <p class="text-[0.6rem] font-bold tracking-wide">MKTG.AX</p>
+                    <div class="mt-2 h-[3px] bg-ink-950"></div>
+                    <p class="mt-4 line-clamp-4 text-base font-extrabold leading-snug">{mainResource.title}</p>
+                    <div class="mt-5 space-y-1.5" aria-hidden="true">
+                      <div class="h-3 bg-neutral-100"></div>
+                      <div class="grid grid-cols-3 gap-1.5"><div class="h-2.5 bg-neutral-100"></div><div class="h-2.5 bg-neutral-200"></div><div class="h-2.5 bg-neutral-100"></div></div>
+                      <div class="grid grid-cols-3 gap-1.5"><div class="h-2.5 bg-neutral-100"></div><div class="h-2.5 bg-neutral-100"></div><div class="h-2.5 bg-neutral-100"></div></div>
+                      <div class="grid grid-cols-3 gap-1.5"><div class="h-2.5 bg-neutral-100"></div><div class="h-2.5 bg-neutral-200"></div><div class="h-2.5 bg-neutral-100"></div></div>
+                    </div>
+                  </div>
+                </a>
+                <div>
+                  {mainResource.homeCatch && <p class="text-xs font-bold">{mainResource.homeCatch}</p>}
+                  <h3 class="mt-3 text-xl font-extrabold leading-snug md:text-2xl">
+                    <a href={`/resources/${mainResource.slug}`} class="hover:underline">{mainResource.title}</a>
+                  </h3>
+                  {mainResource.description && (
+                    <p class="mt-4 line-clamp-3 text-sm leading-relaxed text-neutral-700">{mainResource.description}</p>
+                  )}
+                  <p class="mt-4 text-xs text-neutral-500">
+                    {[mainResource.contents, formatDate(mainResource.publishedAt)].filter(Boolean).join(" / ")}
+                  </p>
+                  <a href={`/resources/${mainResource.slug}`} class="mt-6 inline-flex items-center gap-6 bg-ink-950 px-6 py-3.5 text-sm font-bold text-white transition-colors hover:bg-neutral-800">
+                    {HOME_MATERIALS.resourceCtaLabel}
+                    <span aria-hidden="true">→</span>
+                  </a>
                 </div>
-                <p class="mt-1 line-clamp-1 text-[12px] text-[var(--color-ink-muted)]">{post.description}</p>
               </div>
+
+              {/* 小さい枠（トップ掲載 = 2・3） */}
+              <div class="flex flex-col">
+                {subResources.map((r) => (
+                  <div class="grid grid-cols-[88px_minmax(0,1fr)] gap-5 border-t border-neutral-200 py-6 last:border-b">
+                    <a href={`/resources/${r.slug}`} class="block" aria-hidden="true" tabindex="-1">
+                      <div class="aspect-[3/4] w-full border border-neutral-200 bg-white p-2.5">
+                        <p class="text-[0.45rem] font-bold">MKTG.AX</p>
+                        <div class="mt-1 h-[2px] bg-ink-950"></div>
+                        <p class="mt-2 line-clamp-4 text-[0.6rem] font-extrabold leading-snug">{r.title}</p>
+                        <div class="mt-2 space-y-1" aria-hidden="true">
+                          <div class="h-1.5 bg-neutral-100"></div>
+                          <div class="h-1.5 bg-neutral-100"></div>
+                        </div>
+                      </div>
+                    </a>
+                    <div class="min-w-0">
+                      <p class="text-xs text-neutral-500">
+                        {HOME_MATERIALS.resourceTypeLabel}　/　{formatDate(r.publishedAt)}
+                      </p>
+                      <h3 class="mt-2 font-extrabold leading-snug">
+                        <a href={`/resources/${r.slug}`} class="hover:underline">{r.title}</a>
+                      </h3>
+                      {r.description && <p class="mt-2 line-clamp-2 text-xs leading-relaxed text-neutral-600">{r.description}</p>}
+                      <a href={`/resources/${r.slug}`} class="mt-3 inline-flex items-center gap-2 text-sm font-bold hover:underline">
+                        {HOME_MATERIALS.resourceCtaLabel}
+                        <span aria-hidden="true">→</span>
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        }
+
+        {/* 記事・資料をすべて見る（資料の下・右寄せ、分析ツール一覧と同じ枠付きボタン） */}
+        <div class="mt-8 flex justify-end">
+          <a href={HOME_TOOLS_TABLE.allLink.href} class="inline-flex items-center justify-between gap-10 border border-neutral-300 px-6 py-3.5 text-sm font-bold transition-colors hover:border-ink-950">
+            {HOME_TOOLS_TABLE.allLink.label}
+            <span aria-hidden="true">→</span>
+          </a>
+        </div>
+
+        {/* 分析ツールの表（src/data/home.ts の HOME_TOOLS_TABLE） */}
+        <h2 class="mt-20 text-2xl font-extrabold tracking-tight md:text-[1.75rem]">{HOME_TOOLS_TABLE.heading}</h2>
+        <div class="mt-8">
+          <div class="hidden grid-cols-[minmax(0,1.2fr)_minmax(0,0.85fr)_minmax(0,1.3fr)_110px] gap-6 border-b border-neutral-200 pb-3 text-xs text-neutral-500 md:grid">
+            <span>{HOME_TOOLS_TABLE.columns.tool}</span>
+            <span>{HOME_TOOLS_TABLE.columns.inputs}</span>
+            <span>{HOME_TOOLS_TABLE.columns.result}</span>
+            <span></span>
+          </div>
+          {HOME_TOOLS_TABLE.rows.map((row) => (
+            <div class="grid gap-4 border-b border-neutral-200 py-7 md:grid-cols-[minmax(0,1.2fr)_minmax(0,0.85fr)_minmax(0,1.3fr)_110px] md:items-center md:gap-6">
+              <div>
+                <p class="text-xs text-neutral-500">{row.purpose}</p>
+                <h3 class="mt-2 text-lg font-extrabold leading-snug md:text-xl">
+                  <a href={row.href} class="hover:underline">{row.name}</a>
+                </h3>
+              </div>
+              <div class="space-y-2">
+                {row.inputs.map((input) => (
+                  <p class="border border-neutral-200 bg-white px-3 py-2.5 text-xs text-neutral-600">{input}</p>
+                ))}
+              </div>
+              <div>
+                <p class="font-bold">{row.resultTitle}</p>
+                <p class="mt-2 text-sm leading-relaxed text-neutral-600">{row.resultDescription}</p>
+              </div>
+              <a href={row.href} class="inline-flex items-center gap-2 text-sm font-bold hover:underline md:justify-end">
+                {HOME_TOOLS_TABLE.rowCtaLabel}
+                <span aria-hidden="true">→</span>
+              </a>
+            </div>
+          ))}
+          <div class="mt-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <p class="text-xs text-neutral-500">{HOME_TOOLS_TABLE.note}</p>
+            <a href={HOME_TOOLS_TABLE.listLink.href} class="inline-flex items-center justify-between gap-10 self-start border border-neutral-300 px-6 py-3.5 text-sm font-bold transition-colors hover:border-ink-950 md:self-auto">
+              {HOME_TOOLS_TABLE.listLink.label}
+              <span aria-hidden="true">→</span>
             </a>
-          );
-        })}
-      </div>
-    </div>
-  </section>
-
-  <!-- ===== A SMALL STORY ===== -->
-  <section class="bg-[var(--color-wine)] px-6 py-20 md:px-24 lg:py-[118px]">
-    <div class="mx-auto flex max-w-[1200px] flex-col gap-12 lg:flex-row lg:items-center lg:justify-between">
-      <div class="lg:max-w-[620px]">
-        <p class="eyebrow !text-[var(--color-on-wine-accent)]">A SMALL STORY</p>
-        <h2 class="mt-6 whitespace-pre-line font-serif text-[28px] font-semibold leading-[1.65] text-[var(--color-on-wine)] sm:text-[40px]">{STORY.title}</h2>
-        <p class="mt-6 text-[14px] leading-[2.1] text-[var(--color-on-wine-muted)]">{STORY.body}</p>
-        <a href={STORY.linkHref} class="mt-8 inline-flex h-[52px] items-center gap-2.5 rounded-full bg-[var(--color-surface)] px-6 text-[14px] font-medium text-[var(--color-brand)] hover:opacity-90">{STORY.linkLabel}<span class="text-[16px]">→</span></a>
-      </div>
-      <div class="relative mx-auto w-full max-w-[440px] shrink-0 lg:mx-0">
-        <img src="/images/top/story.svg" alt="" width="440" height="360" class="h-auto w-full" />
-        <p class="absolute top-[78%] left-[4%] w-[36%] whitespace-pre-line text-center text-[10px] leading-[1.7] text-[var(--color-on-wine-accent)] sm:text-[11px]">{STORY.note}</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- ===== プロフィール ===== -->
-  <section class="bg-[var(--color-sand)] px-6 py-20 md:px-24 lg:py-[104px]">
-    <div class="mx-auto flex max-w-[1248px] flex-col gap-10 rounded-[28px] bg-[var(--color-surface)] p-6 shadow-[0_10px_30px_0_rgba(72,24,34,0.07)] sm:p-12 lg:flex-row lg:items-center lg:gap-14">
-      <div class="relative mx-auto w-full max-w-[310px] shrink-0 overflow-hidden rounded-[24px] lg:mx-0">
-        <img src="/images/author-portrait.svg" alt="" width="150" height="154" class="h-auto w-full" />
-        <p class="absolute bottom-[10%] left-[55%] flex items-center gap-1.5 text-[9px] text-[var(--color-brand)]">
-          <span class="size-[6px] rounded-full bg-[var(--color-accent)]"></span>{AUTHOR_PROFILE.label}
-        </p>
-      </div>
-      <div>
-        <p class="eyebrow">PROFILE / ABOUT THIS SITE</p>
-        <h2 class="mt-5 font-serif text-[22px] font-semibold leading-[1.6] text-[var(--color-ink)] sm:text-[26px]">{PROFILE.title}</h2>
-        {PROFILE.body.map((p) => <p class="mt-5 text-[14px] leading-[2] text-[var(--color-ink-muted)]">{p}</p>)}
-        <div class="mt-6 flex flex-wrap gap-3">
-          {PROFILE.facts.map((f) => <span class="rounded-full bg-[var(--color-sand)] px-[14px] py-[7px] text-[11px] text-[var(--color-brand)]">{f}</span>)}
+          </div>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- ===== お問い合わせへの案内 ===== -->
-  <section class="relative overflow-hidden bg-[var(--color-theme-money)] px-6 pt-20 pb-36 md:px-24 lg:pt-[100px]">
-    <div class="relative z-10 mx-auto flex max-w-[1220px] flex-col gap-10 lg:flex-row lg:items-center lg:justify-between">
-      <div class="lg:max-w-[660px]">
-        <p class="text-[11px] font-bold text-[var(--color-brand)]">{CONTACT.eyebrow}</p>
-        <h2 class="mt-4 font-serif text-[30px] font-semibold text-[var(--color-ink)] sm:text-[40px]">{CONTACT.title}</h2>
-        <p class="mt-5 text-[15px] leading-[1.9] text-[var(--color-ink-muted)]">{CONTACT.body}</p>
-        <a href="/contact" class="mt-8 inline-flex h-[52px] items-center gap-2.5 rounded-full bg-[var(--color-brand)] px-7 text-[14px] font-medium text-[var(--color-surface)] hover:opacity-90">お問い合わせへ<span class="text-[16px]">→</span></a>
+    {/* ===== 03 新着記事 ===== */}
+    {
+      latestPosts.length > 0 && (
+        <section class="border-t border-neutral-200">
+          <div class="mx-auto max-w-6xl px-5 py-16 md:py-20">
+            <p class="text-xs font-bold text-neutral-500">03　{HOME_LATEST.eyebrow}</p>
+            <h2 class="mt-4 text-2xl font-extrabold tracking-tight md:text-[2rem]">{HOME_LATEST.heading}</h2>
+            <div class="mt-10 grid gap-10 md:grid-cols-[240px_minmax(0,1fr)] md:gap-14">
+              <div>
+                <p class="text-xs font-bold tracking-widest text-neutral-500">{HOME_LATEST.subLabel}</p>
+                <p class="mt-4 text-xl font-extrabold leading-snug">
+                  {HOME_LATEST.subHeadingLines.map((line) => (
+                    <span class="block">{line}</span>
+                  ))}
+                </p>
+                <p class="mt-4 text-sm leading-relaxed text-neutral-600">{HOME_LATEST.description}</p>
+                <a href={HOME_LATEST.allLink.href} class="mt-6 inline-block text-sm font-bold hover:underline">{HOME_LATEST.allLink.label} →</a>
+              </div>
+              <ul class="border-t border-neutral-200">
+                {latestPosts.map((post) => (
+                  <li class="border-b border-neutral-200">
+                    <a href={post.href} class="group grid gap-3 py-6 md:grid-cols-[110px_minmax(0,1fr)_24px] md:gap-6">
+                      <div class="flex gap-4 text-xs text-neutral-500 md:block md:space-y-2">
+                        <p>{formatDate(post.publishedAt)}</p>
+                        {post.readTime && <p>{post.readTime}</p>}
+                      </div>
+                      <div class="min-w-0">
+                        {post.category && <p class="text-xs font-bold">{post.category}</p>}
+                        <h3 class="mt-2 font-extrabold leading-snug group-hover:underline md:text-lg">{post.title}</h3>
+                        {post.description && <p class="mt-2 line-clamp-2 text-sm leading-relaxed text-neutral-600">{post.description}</p>}
+                      </div>
+                      <span class="hidden text-lg text-neutral-400 group-hover:text-ink-950 md:block" aria-hidden="true">↗</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </section>
+      )
+    }
+
+    {/* ===== 04 ご要望・ご質問（お問い合わせフォームへ誘導） ===== */}
+    <section class="border-t border-neutral-200">
+      <div class="mx-auto max-w-6xl px-5 py-16 md:py-20">
+        <p class="text-xs font-bold text-neutral-500">04　{HOME_REQUEST.eyebrow}</p>
+        <div class="mt-4 grid gap-8 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+          <div>
+            <h2 class="text-2xl font-extrabold tracking-tight md:text-[2rem]">{HOME_REQUEST.heading}</h2>
+            <p class="mt-5 max-w-2xl text-sm leading-[1.9] text-neutral-700">{HOME_REQUEST.description}</p>
+            <ul class="mt-6 space-y-2 text-sm text-neutral-700">
+              {HOME_REQUEST.examples.map((ex) => (
+                <li class="flex items-start gap-3">
+                  <span class="mt-[0.55em] h-1.5 w-1.5 shrink-0 bg-ink-950" aria-hidden="true"></span>
+                  <span>{ex}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <a href={HOME_REQUEST.link.href} class="inline-flex items-center gap-4 self-start border border-ink-950 bg-ink-950 px-6 py-3.5 text-sm font-bold text-white transition-colors hover:bg-neutral-800 md:self-auto">
+            {HOME_REQUEST.link.label}
+            <span aria-hidden="true">→</span>
+          </a>
+        </div>
       </div>
-      <div class="relative mx-auto w-full max-w-[420px] shrink-0 lg:mx-0">
-        <img src="/images/top/mailbox.svg" alt="" width="420" height="228" class="h-auto w-full" />
-        <p class="mt-2 text-right text-[11px] text-[var(--color-brand)] lg:pr-10">{CONTACT.note}</p>
-      </div>
-    </div>
-    <img src="/images/top/wave.svg" alt="" class="pointer-events-none absolute bottom-6 left-0 h-[90px] w-full sm:h-[122px]" />
-  </section>
+    </section>
+  </div>
 </BaseLayout>
