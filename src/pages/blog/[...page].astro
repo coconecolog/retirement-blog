@@ -5,7 +5,7 @@ import Pagination from '../../components/Pagination.astro';
 import NoteBox from '../../components/NoteBox.astro';
 import ThemeSubtitle from '../../components/ThemeSubtitle.astro';
 import { getAllPosts, getCategoryMeta } from '../../lib/notion';
-import { estimateReadMinutes } from '../../lib/format';
+import { estimateReadMinutes, formatDateDot } from '../../lib/format';
 import { SITE, THEMES, BLOG_PAGE, themeHref } from '../../lib/site.config';
 
 export async function getStaticPaths({ paginate }: any) {
@@ -69,15 +69,18 @@ const paths = THEMES.map((theme) => {
               <p class="font-serif text-[30px] text-[var(--color-brand)]">{theme.number}</p>
               <div>
                 <p class="font-serif text-[22px] font-semibold text-[var(--color-ink)] sm:text-[24px]">{theme.pathTitle}</p>
-                <a href={themeHref(theme.name)} class="mt-2 inline-block text-[13px] font-medium text-[var(--color-brand)] hover:underline">{theme.name} →</a>
-                <ThemeSubtitle text={theme.subtitle} class="mt-1 text-[11px] leading-[1.8] text-[var(--color-ink-muted)]" />
+                <ThemeSubtitle text={theme.subtitle} class="mt-2 text-[12px] leading-[1.8] text-[var(--color-ink-muted)]" />
+                <a href={themeHref(theme.name)} class="mt-4 inline-flex items-center gap-2 rounded-full bg-[var(--color-brand)] px-5 py-2 text-[12px] font-medium text-[var(--color-surface)] hover:opacity-90">実験ログを読む <span aria-hidden="true">→</span></a>
               </div>
               <div class="col-span-2 md:col-span-1">
                 <p class="text-[11px] text-[var(--color-ink-muted)]">{theme.pathLead}</p>
                 {post ? (
                   <a href={`/blog/${post.slug}`} class="group mt-2 block">
                     <p class="font-serif text-[18px] font-semibold leading-[1.6] text-[var(--color-ink)] group-hover:text-[var(--color-brand)] sm:text-[20px]">{post.title}</p>
-                    <p class="mt-2 text-[12px] text-[var(--color-brand)]">約{estimateReadMinutes(post.html)}分の記録を読む →</p>
+                    <div class="mt-2 flex items-center justify-between gap-4 text-[12px]">
+                      <p class="text-[var(--color-ink-muted)]"><span>{formatDateDot(post.publishedAt)}</span><span class="ml-4">約{estimateReadMinutes(post.html)}分</span></p>
+                      <p class="shrink-0 text-[var(--color-brand)] group-hover:underline">このログを読む →</p>
+                    </div>
                   </a>
                 ) : (
                   <p class="mt-2 text-[13px] text-[var(--color-ink-muted)]">記録は、これから増えていきます。</p>
