@@ -3,7 +3,7 @@ import BaseLayout from '../../../../layouts/BaseLayout.astro';
 import PostCard from '../../../../components/PostCard.astro';
 import Pagination from '../../../../components/Pagination.astro';
 import { getAllPosts, getAllAuthors, getAuthorBySlug } from '../../../../lib/notion';
-import { SITE } from '../../../../lib/site.config';
+import { SITE, BLOG_PAGE } from '../../../../lib/site.config';
 
 export async function getStaticPaths({ paginate }: any) {
   const posts = await getAllPosts();
@@ -35,7 +35,7 @@ const basePath = `/blog/author/${slug}`;
       <nav class="flex items-center gap-[14px] text-[11px] text-[var(--color-ink-muted)]" aria-label="パンくずリスト">
         <a href="/" class="hover:text-[var(--color-brand)]">ホーム</a>
         <span>／</span>
-        <a href="/blog" class="hover:text-[var(--color-brand)]">ブログ</a>
+        <a href="/blog" class="hover:text-[var(--color-brand)]">{BLOG_PAGE.title}</a>
         <span>／</span>
         <span>{name}</span>
       </nav>
