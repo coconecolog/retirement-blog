@@ -7,7 +7,7 @@ export const SITE = {
   description:
     '50代からの、老後に向けた最後の攻めと資産の守り方を学ぶサイト。投資・資産形成の基礎から出口戦略まで。',
   // astro.config.mjs の `site` と揃えてください（独自ドメイン確定後に変更）
-  url: 'https://retirement-blog.pages.dev',
+  url: 'https://coconeco-log.com',
   locale: 'ja-JP',
   postsPerPage: 9,
 };
