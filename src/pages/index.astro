@@ -82,8 +82,7 @@ const websiteJsonLd = {
   <!-- ===== この場所について＋3つの道 ===== -->
   <section id="themes" class="scroll-mt-6 bg-[var(--color-sand)] px-6 py-20 md:px-24 lg:py-[104px]">
     <div class="mx-auto max-w-[1248px]">
-      <div class="flex flex-col gap-10 lg:flex-row lg:items-center lg:gap-16">
-        <img src="/images/top/sprout.svg" alt="" width="430" height="280" class="hidden h-auto w-full max-w-[430px] shrink-0 md:block" />
+      <div class="mx-auto max-w-[880px] text-center">
         <div>
           <p class="eyebrow">ABOUT THIS EXPERIMENT</p>
           <h2 class="mt-4 whitespace-pre-line font-serif text-[28px] font-semibold leading-[1.45] text-[var(--color-ink)] sm:text-[38px]">{ABOUT.title}</h2>
@@ -120,7 +119,7 @@ const websiteJsonLd = {
         <p class="eyebrow">LATEST LOGS</p>
         <h2 class="mt-4 whitespace-pre-line font-serif text-[28px] font-semibold leading-[1.45] text-[var(--color-ink)] sm:text-[38px]">{LATEST.title}</h2>
         <p class="mt-5 text-[15px] leading-[2] text-[var(--color-ink-muted)]">{LATEST.body}</p>
-        <a href="/blog" class="mt-6 inline-flex items-center gap-2.5 text-[14px] font-medium text-[var(--color-brand)] hover:underline">実験ログをすべて見る<span class="text-[16px]">→</span></a>
+        <a href="/blog" class="mt-8 inline-flex h-[52px] items-center gap-2.5 rounded-full bg-[var(--color-brand)] px-6 text-[14px] font-medium text-[var(--color-surface)] hover:opacity-90">実験ログをすべて見る<span class="text-[16px]">→</span></a>
       </div>
       <div class="flex min-w-0 flex-1 flex-col gap-[14px]">
         {latestPosts.length === 0 && (
