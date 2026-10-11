@@ -105,7 +105,7 @@ const breadcrumbJsonLd = {
           <p class="eyebrow whitespace-pre">{primaryCategory ? `${primaryCategory}  /  実験ログ` : '実験ログ'}</p>
           <h1 class="font-serif text-[28px] font-semibold leading-[1.55] text-[var(--color-ink)] sm:text-[36px] lg:text-[40px]">{post.title}</h1>
           {post.summary && (
-            <p class="whitespace-pre-line text-[15px] leading-[2] text-[var(--color-ink-muted)] sm:text-[17px]">{post.summary}</p>
+            <p class="max-w-full self-center whitespace-pre-line text-left text-[15px] leading-[2] text-[var(--color-ink-muted)] sm:text-[17px]">{post.summary}</p>
           )}
           <div class="flex flex-wrap items-center justify-center gap-4 text-[12px] text-[var(--color-ink-muted)]">
             <span class="text-[var(--color-ink)]">{authorName}</span>
