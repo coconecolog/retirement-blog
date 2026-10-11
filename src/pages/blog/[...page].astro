@@ -70,7 +70,7 @@ const paths = THEMES.map((theme) => {
               <div>
                 <p class="font-serif text-[22px] font-semibold text-[var(--color-ink)] sm:text-[24px]">{theme.pathTitle}</p>
                 <ThemeSubtitle text={theme.subtitle} class="mt-2 text-[12px] leading-[1.8] text-[var(--color-ink-muted)]" />
-                <a href={themeHref(theme.name)} class="mt-4 inline-flex items-center gap-2 rounded-full bg-[var(--color-brand)] px-5 py-2 text-[12px] font-medium text-[var(--color-surface)] hover:opacity-90">実験ログを読む <span aria-hidden="true">→</span></a>
+                <a href={themeHref(theme.name)} class="mt-4 inline-flex items-center gap-2 rounded-full bg-[var(--color-brand)] px-5 py-2 text-[12px] font-medium text-[var(--color-surface)] hover:opacity-90">{theme.name} <span aria-hidden="true">→</span></a>
               </div>
               <div class="col-span-2 md:col-span-1">
                 <p class="text-[11px] text-[var(--color-ink-muted)]">{theme.pathLead}</p>
