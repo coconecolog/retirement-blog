@@ -6,7 +6,7 @@ import NoteBox from '../../../../components/NoteBox.astro';
 import ThemeSubtitle from '../../../../components/ThemeSubtitle.astro';
 import { getAllPosts, getCategoryMeta } from '../../../../lib/notion';
 import { formatDateDot, estimateReadMinutes } from '../../../../lib/format';
-import { SITE, THEMES, themeHref, themeColor } from '../../../../lib/site.config';
+import { SITE, THEMES, BLOG_PAGE, themeHref, themeColor } from '../../../../lib/site.config';
 
 export async function getStaticPaths({ paginate }: any) {
   const posts = await getAllPosts();
@@ -51,7 +51,9 @@ const shownTo = shownFrom + page.data.length - 1;
       <nav class="flex flex-wrap items-center gap-[14px] text-[11px] text-[var(--color-ink-muted)]" aria-label="パンくずリスト">
         <a href="/" class="hover:text-[var(--color-brand)]">ホーム</a>
         <span>／</span>
-        <span>{category}</span>
+        <a href="/blog" class="hover:text-[var(--color-brand)]">{BLOG_PAGE.title}</a>
+        <span>／</span>
+        <span aria-current="page">{category}</span>
       </nav>
 
       <div class="mt-10 flex flex-col gap-10 lg:mt-12 lg:flex-row lg:items-center lg:justify-between">
