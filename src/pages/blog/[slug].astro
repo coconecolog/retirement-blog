@@ -1,13 +1,14 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getAllPosts } from '../../lib/notion';
+import { getKeyVisual } from '../../lib/keyvisual';
 import { formatDateDot, estimateReadMinutes } from '../../lib/format';
 import { SITE, ARTICLE_SIGNATURE, ARTICLE_DISCLAIMER, AUTHOR_PROFILE, themeColor, themeHref } from '../../lib/site.config';
 
 export async function getStaticPaths() {
   const posts = await getAllPosts();
 
-  return posts.map((post) => {
+  return Promise.all(posts.map(async (post) => {
     // 「この話のとなりに」に並べる2記事。
     // 1) 同じメインタグの記事 → 2) 同じカテゴリの記事 → 3) 新しい記事 の順で、自分を除いて2件になるまで埋める。
     const others = posts.filter((p) => p.id !== post.id);
@@ -16,14 +17,17 @@ export async function getStaticPaths() {
     const sameCategory = primaryCategory ? others.filter((p) => p.categories.includes(primaryCategory)) : [];
     const neighbors = [...new Set([...sameMainTag, ...sameCategory, ...others])].slice(0, 2);
 
+    // キービジュアル：サムネイルの絵柄から背景色を抜いた画像をビルド時に作る（src/lib/keyvisual.ts）
+    const keyVisual = await getKeyVisual(post);
+
     return {
       params: { slug: post.slug },
-      props: { post, neighbors, primaryCategory },
+      props: { post, neighbors, primaryCategory, keyVisual },
     };
-  });
+  }));
 }
 
-const { post, neighbors, primaryCategory } = Astro.props as any;
+const { post, neighbors, primaryCategory, keyVisual } = Astro.props as any;
 
 // 黄色のコールアウト（今回わかったこと）が複数ある場合、目次からのジャンプ先は最初の1つだけにする。
 let findingsSeen = false;
@@ -33,11 +37,7 @@ const bodyHtml: string = post.html.replace(/ id="findings"/g, (m: string) => {
   return m;
 });
 const hasFindings = findingsSeen;
-
-// 本文の先頭が画像なら、それをキービジュアルとして本文から切り出し、目次より上に置く。
-const keyVisualMatch = bodyHtml.match(/^\s*(<figure class="notion-figure">[\s\S]*?<\/figure>)/);
-const keyVisual: string | null = keyVisualMatch ? keyVisualMatch[1] : null;
-const html: string = keyVisual ? bodyHtml.slice(keyVisualMatch![0].length) : bodyHtml;
+const html: string = bodyHtml;
 
 const readMinutes = estimateReadMinutes(post.html);
 const authorName: string = post.author?.name ?? AUTHOR_PROFILE.label;
@@ -116,8 +116,15 @@ const breadcrumbJsonLd = {
           </div>
         </header>
 
-        <!-- キービジュアル（本文の先頭の画像） -->
-        {keyVisual && <div class="prose max-w-none mb-12 [&_.notion-figure]:my-0" set:html={keyVisual} />}
+        <!-- キービジュアル（サムネイルの絵柄から自動生成。高さ200px・本文幅いっぱい、背景にカテゴリ色の〇） -->
+        {keyVisual && (
+          <div class="mb-12 flex h-[200px] w-full items-center justify-center" aria-hidden="true">
+            <div class="relative" style={`width: min(100%, ${(200 * keyVisual.width / keyVisual.height).toFixed(1)}px); aspect-ratio: ${keyVisual.width} / ${keyVisual.height};`}>
+              <span class="absolute right-[6%] top-[2%] aspect-square h-[58%] rounded-full" style={`background-color: ${themeColor(primaryCategory)}`}></span>
+              <img src={keyVisual.src} alt="" width={keyVisual.width} height={keyVisual.height} class="relative block h-full w-full" />
+            </div>
+          </div>
+        )}
 
         <!-- スマホ用の目次（本文の前に表示） -->
         {toc.length > 0 && (
