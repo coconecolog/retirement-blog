@@ -26,6 +26,9 @@ const pageTitle = title ? `${title} | ${SITE.title}` : SITE.title;
 const canonicalUrl = new URL(canonicalPath, SITE.url).toString();
 const resolvedOgImage = ogImage ? new URL(ogImage, SITE.url).toString() : new URL('/ogp-default.png', SITE.url).toString();
 
+// Googleタグマネージャー（GA4はGTM側で設定）
+const GTM_ID = import.meta.env.PUBLIC_GTM_ID ?? '';
+
 const jsonLdList = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
 ---
 
@@ -65,16 +68,14 @@ const jsonLdList = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
       <script type="application/ld+json" set:html={JSON.stringify(entry)} />
     ))}
 
-    {ANALYTICS.gaMeasurementId && (
-      <>
-        <script async src={`https://www.googletagmanager.com/gtag/js?id=${ANALYTICS.gaMeasurementId}`}></script>
-        <script define:vars={{ gaId: ANALYTICS.gaMeasurementId }}>
-          window.dataLayer = window.dataLayer || [];
-          function gtag() { dataLayer.push(arguments); }
-          gtag('js', new Date());
-          gtag('config', gaId);
-        </script>
-      </>
+    {GTM_ID && (
+      <script define:vars={{ gtmId: GTM_ID }}>
+        (function (w, d, s, l, i) {
+          w[l] = w[l] || []; w[l].push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
+          var f = d.getElementsByTagName(s)[0], j = d.createElement(s), dl = l != 'dataLayer' ? '&l=' + l : '';
+          j.async = true; j.src = 'https://www.googletagmanager.com/gtm.js?id=' + i + dl; f.parentNode.insertBefore(j, f);
+        })(window, document, 'script', 'dataLayer', gtmId);
+      </script>
     )}
     {ANALYTICS.clarityProjectId && (
       <script define:vars={{ clarityId: ANALYTICS.clarityProjectId }}>
@@ -87,6 +88,9 @@ const jsonLdList = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
     )}
   </head>
   <body class="flex min-h-screen flex-col antialiased">
+    {GTM_ID && (
+      <noscript><iframe src={`https://www.googletagmanager.com/ns.html?id=${GTM_ID}`} height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    )}
     <Header />
     <main class="flex-1">
       <slot />
