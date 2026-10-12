@@ -6,7 +6,12 @@ import sitemap from '@astrojs/sitemap';
 export default defineConfig({
   site: 'https://coconeco-log.com',
   output: 'static',
-  integrations: [sitemap()],
+  integrations: [
+    sitemap({
+      // サイト内検索ページは検索結果に載せる必要がないため、サイトマップから除外
+      filter: (page) => !page.includes('/search'),
+    }),
+  ],
   vite: {
     plugins: [tailwindcss()],
   },
