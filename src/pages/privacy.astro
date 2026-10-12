@@ -1,16 +1,322 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro';
+// 個人情報保護方針（プライバシーポリシー）ページ。
+// 事業者情報は consts.ts の OPERATOR_NAME / OPERATOR_REPRESENTATIVE / OPERATOR_ADDRESS、窓口メールは CONTACT_EMAIL を参照。
+// 委託先（Supabase・Resend・Cloudflare）や解析ツールを追加・変更した場合は、下の entrustees / externalTransmissions も更新すること。
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import Breadcrumb from "@/components/Breadcrumb.astro";
+import { SITE_NAME, SITE_URL, CONTACT_EMAIL, OPERATOR_NAME, OPERATOR_REPRESENTATIVE, OPERATOR_ADDRESS } from "@/consts";
+
+const breadcrumbItems = [
+  { name: "トップ", href: "/" },
+  { name: "個人情報保護方針", href: "/privacy" },
+];
+
+const establishedAt = "2026年8月25日";
+const lastUpdated = "2026年10月12日";
+
+// 2. 取得する個人情報
+const collectedItems = [
+  {
+    scene: "お問い合わせフォームのご利用時",
+    items: "氏名、会社名、メールアドレス、お問い合わせの種別・内容",
+  },
+  {
+    scene: "資料（ホワイトペーパー）ダウンロードのお申し込み時",
+    items: "氏名、会社名、メールアドレス、お申し込みいただいた資料名",
+  },
+  {
+    scene: "当サイトの閲覧時（自動取得）",
+    items: "Cookie等の識別子、IPアドレス、ブラウザ・端末の種類、閲覧したページ、ページ上での操作履歴（クリック・スクロール等）、参照元URL",
+  },
+];
+
+// 3. 利用目的
+const purposes = [
+  "お問い合わせへの回答、およびそのために必要なご連絡を行うため",
+  "お申し込みいただいた資料（ホワイトペーパー）をお届けするため",
+  "資料をお申し込みいただいた方へ、当サイトの新着コンテンツや運営者が提供するサービスに関するご案内をメールでお送りするため（メール内のリンクからいつでも配信停止いただけます）",
+  "当サイトのコンテンツ・サービスの改善、利用状況の分析のため",
+  "不正なアクセスや迷惑行為の防止、当サイトの安全な運営のため",
+  "上記の利用目的に付随する目的のため",
+];
+
+// 5. 業務委託先
+const entrustees = [
+  {
+    name: "Supabase, Inc.（米国）",
+    purpose: "お問い合わせ内容・資料お申し込み情報のデータベースへの保存",
+  },
+  {
+    name: "Resend（Plus Five Five, Inc.、米国）",
+    purpose: "資料ダウンロードのご案内メール、お問い合わせ通知メール等の送信",
+  },
+  {
+    name: "Cloudflare, Inc.（米国）",
+    purpose: "当サイトのホスティング、フォーム送信データの処理",
+  },
+];
+
+// 6. 外部送信（電気通信事業法に基づく公表事項）
+const externalTransmissions = [
+  {
+    tool: "Google タグマネージャー／Google アナリティクス（GA4）",
+    company: "Google LLC",
+    info: "Cookie等の識別子、閲覧したページのURL、参照元、IPアドレス、ブラウザ・端末情報、閲覧日時",
+    purpose: "当サイトの利用状況の分析、コンテンツ改善",
+    policyLabel: "Google のプライバシーポリシー",
+    policyUrl: "https://policies.google.com/privacy",
+    optoutLabel: "Google アナリティクス オプトアウト アドオン",
+    optoutUrl: "https://tools.google.com/dlpage/gaoptout?hl=ja",
+  },
+  {
+    tool: "Microsoft Clarity",
+    company: "Microsoft Corporation",
+    info: "Cookie等の識別子、閲覧したページのURL、ページ上でのマウス操作・クリック・スクロール等の操作情報、ブラウザ・端末情報、IPアドレス",
+    purpose: "ページの使いやすさの分析、表示・操作上の不具合の把握",
+    policyLabel: "Microsoft のプライバシーステートメント",
+    policyUrl: "https://privacy.microsoft.com/ja-jp/privacystatement",
+    optoutLabel: "",
+    optoutUrl: "",
+  },
+];
+
+// 7. 安全管理措置
+const safetyMeasures = [
+  {
+    label: "基本方針の策定",
+    body: "個人データの適正な取扱いの確保のため、本方針を策定し公表しています。",
+  },
+  {
+    label: "組織的安全管理措置",
+    body: "個人データの取扱いに関する責任者を定め、取扱状況を定期的に点検しています。",
+  },
+  {
+    label: "人的安全管理措置",
+    body: "個人データを取り扱う者に対し、適正な取扱いについて周知・指導を行っています。",
+  },
+  {
+    label: "物理的安全管理措置",
+    body: "個人データを取り扱う端末の盗難・紛失を防止する措置を講じ、不要となったデータは復元できない方法で削除します。",
+  },
+  {
+    label: "技術的安全管理措置",
+    body: "通信の暗号化（SSL/TLS）、アクセス権限の制限、認証情報の適切な管理等により、不正アクセスや情報漏えいを防止しています。",
+  },
+  {
+    label: "外的環境の把握",
+    body: "個人データは米国の事業者が提供するサービス上で取り扱うことがあります。米国における個人情報の保護に関する制度を把握したうえで、安全管理のために必要かつ適切な措置を講じています。",
+  },
+];
+
+// 8. 開示等の請求
+const requestTypes = [
+  "利用目的の通知",
+  "保有個人データの開示（第三者提供記録の開示を含みます）",
+  "内容の訂正・追加・削除",
+  "利用の停止・消去",
+  "第三者への提供の停止",
+];
+
+// 4. 第三者提供の例外
+const thirdPartyExceptions = [
+  "法令に基づく場合",
+  "人の生命、身体又は財産の保護のために必要がある場合であって、ご本人の同意を得ることが困難であるとき",
+  "公衆衛生の向上又は児童の健全な育成の推進のために特に必要がある場合であって、ご本人の同意を得ることが困難であるとき",
+  "国の機関もしくは地方公共団体又はその委託を受けた者が法令の定める事務を遂行することに対して協力する必要がある場合",
+  "本方針の「5. 業務の委託について」に記載のとおり、利用目的の達成に必要な範囲で個人情報の取扱いを委託する場合",
+];
+
+const h2 = "text-lg font-bold text-ink-950";
+const p = "mt-3 leading-relaxed text-neutral-600";
+const ul = "mt-3 list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-neutral-600";
+const link = "text-brand-700 hover:underline";
 ---
 
-<BaseLayout title="個人情報保護方針" description="50代から育てるポートフォリオの個人情報保護方針" canonicalPath="/privacy">
-  <section class="px-6 py-20 md:px-24">
-    <div class="mx-auto max-w-3xl">
-      <p class="eyebrow">PRIVACY POLICY</p>
-      <h1 class="mt-4 font-serif text-[32px] font-semibold leading-[1.5] text-[var(--color-ink)] md:text-[38px]">個人情報保護方針</h1>
+<BaseLayout
+  title="個人情報保護方針"
+  description={`${SITE_NAME}の個人情報保護方針（プライバシーポリシー）のご案内です。`}
+  ogImage="/open-graph/default.png"
+  noindex
+  pagefindIgnore
+>
+  <Breadcrumb items={breadcrumbItems} />
 
-      <!-- ここに本文を追加します（原稿をいただいたら差し込みます） -->
-      <div class="prose mt-10 max-w-none">
+  <section class="mx-auto max-w-3xl px-5 py-12">
+    <h1 class="text-3xl font-extrabold tracking-tight text-ink-950">個人情報保護方針</h1>
+    <p class="mt-4 leading-relaxed text-neutral-600">
+      {OPERATOR_NAME}（以下「運営者」といいます）は、運営するウェブサイト「{SITE_NAME}」（{SITE_URL}、以下「当サイト」といいます）をご利用いただく皆様の個人情報の重要性を認識し、個人情報の保護に関する法律その他の関連法令等を遵守し、以下のとおり個人情報を適切に取得・利用・管理いたします。
+    </p>
+
+    <div class="mt-10">
+      <h2 class={h2}>1. 事業者情報</h2>
+      <dl class="mt-4 space-y-2 rounded-2xl border border-neutral-100 bg-neutral-50 p-6 text-sm">
+        <div class="flex flex-col gap-1 sm:flex-row sm:gap-3">
+          <dt class="w-28 shrink-0 font-medium text-neutral-500">名称</dt>
+          <dd class="text-neutral-700">{OPERATOR_NAME}</dd>
+        </div>
+        {
+          OPERATOR_REPRESENTATIVE && (
+            <div class="flex flex-col gap-1 sm:flex-row sm:gap-3">
+              <dt class="w-28 shrink-0 font-medium text-neutral-500">代表者</dt>
+              <dd class="text-neutral-700">{OPERATOR_REPRESENTATIVE}</dd>
+            </div>
+          )
+        }
+        <div class="flex flex-col gap-1 sm:flex-row sm:gap-3">
+          <dt class="w-28 shrink-0 font-medium text-neutral-500">住所</dt>
+          <dd class="text-neutral-700">{OPERATOR_ADDRESS}</dd>
+        </div>
+        <div class="flex flex-col gap-1 sm:flex-row sm:gap-3">
+          <dt class="w-28 shrink-0 font-medium text-neutral-500">運営サイト</dt>
+          <dd class="text-neutral-700">{SITE_NAME}（{SITE_URL}）</dd>
+        </div>
+        <div class="flex flex-col gap-1 sm:flex-row sm:gap-3">
+          <dt class="w-28 shrink-0 font-medium text-neutral-500">連絡先</dt>
+          <dd class="text-neutral-700">
+            <a href={`mailto:${CONTACT_EMAIL}`} class={link}>{CONTACT_EMAIL}</a>
+          </dd>
+        </div>
+      </dl>
+    </div>
+
+    <div class="mt-10">
+      <h2 class={h2}>2. 取得する個人情報</h2>
+      <p class={p}>運営者は、以下の場面で、以下の情報を適正な手段により取得します。</p>
+      <dl class="mt-4 space-y-4 text-sm">
+        {
+          collectedItems.map((row) => (
+            <div class="rounded-xl border border-neutral-100 p-4">
+              <dt class="font-medium text-ink-950">{row.scene}</dt>
+              <dd class="mt-1 leading-relaxed text-neutral-600">{row.items}</dd>
+            </div>
+          ))
+        }
+      </dl>
+    </div>
+
+    <div class="mt-10">
+      <h2 class={h2}>3. 利用目的</h2>
+      <p class={p}>取得した個人情報は、以下の目的の範囲内で利用し、ご本人の同意なく目的外の利用はいたしません。</p>
+      <ul class={ul}>
+        {purposes.map((item) => <li>{item}</li>)}
+      </ul>
+    </div>
+
+    <div class="mt-10">
+      <h2 class={h2}>4. 第三者提供について</h2>
+      <p class={p}>運営者は、あらかじめご本人の同意を得ずに、取得した個人情報を第三者に提供することはありません。ただし、以下の場合はこの限りではありません。</p>
+      <ul class={ul}>
+        {thirdPartyExceptions.map((item) => <li>{item}</li>)}
+      </ul>
+    </div>
+
+    <div class="mt-10">
+      <h2 class={h2}>5. 業務の委託について</h2>
+      <p class={p}>運営者は、利用目的の達成に必要な範囲で、個人情報の取扱いの全部または一部を外部の事業者に委託することがあります。委託にあたっては、個人情報を適切に取り扱う事業者を選定し、必要かつ適切な監督を行います。主な委託先は以下のとおりです。</p>
+      <ul class={ul}>
+        {
+          entrustees.map((row) => (
+            <li>
+              {row.name}：{row.purpose}
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+
+    <div class="mt-10">
+      <h2 class={h2}>6. Cookie・アクセス解析ツール（外部送信）について</h2>
+      <p class={p}>当サイトでは、利用状況の分析とサービス向上のため、以下のツールを利用しています。これらのツールにより、ご利用者の端末から以下の事業者へ情報が送信されます。送信された情報は、各事業者のプライバシーポリシーに基づいて管理されます。</p>
+      <div class="mt-4 space-y-4 text-sm">
+        {
+          externalTransmissions.map((row) => (
+            <div class="rounded-xl border border-neutral-100 p-4">
+              <p class="font-medium text-ink-950">{row.tool}</p>
+              <dl class="mt-2 space-y-1.5 leading-relaxed text-neutral-600">
+                <div class="flex flex-col gap-0.5 sm:flex-row sm:gap-3">
+                  <dt class="w-28 shrink-0 text-neutral-500">送信先</dt>
+                  <dd>{row.company}</dd>
+                </div>
+                <div class="flex flex-col gap-0.5 sm:flex-row sm:gap-3">
+                  <dt class="w-28 shrink-0 text-neutral-500">送信される情報</dt>
+                  <dd>{row.info}</dd>
+                </div>
+                <div class="flex flex-col gap-0.5 sm:flex-row sm:gap-3">
+                  <dt class="w-28 shrink-0 text-neutral-500">利用目的</dt>
+                  <dd>{row.purpose}</dd>
+                </div>
+                <div class="flex flex-col gap-0.5 sm:flex-row sm:gap-3">
+                  <dt class="w-28 shrink-0 text-neutral-500">詳細</dt>
+                  <dd>
+                    <a href={row.policyUrl} target="_blank" rel="noopener noreferrer" class={link}>{row.policyLabel}</a>
+                  </dd>
+                </div>
+                {
+                  row.optoutUrl && (
+                    <div class="flex flex-col gap-0.5 sm:flex-row sm:gap-3">
+                      <dt class="w-28 shrink-0 text-neutral-500">オプトアウト</dt>
+                      <dd>
+                        <a href={row.optoutUrl} target="_blank" rel="noopener noreferrer" class={link}>{row.optoutLabel}</a>
+                      </dd>
+                    </div>
+                  )
+                }
+              </dl>
+            </div>
+          ))
+        }
+      </div>
+      <p class="mt-3 text-sm leading-relaxed text-neutral-600">
+        ブラウザの設定によりCookieを無効化することで、これらのツールによる情報の収集を拒否することができます。無効化した場合、当サイトの一部機能がご利用いただけなくなる場合があります。
+      </p>
+    </div>
+
+    <div class="mt-10">
+      <h2 class={h2}>7. 安全管理措置</h2>
+      <p class={p}>運営者は、取得した個人情報の漏えい、滅失又はき損の防止その他の安全管理のために、以下の措置を講じています。</p>
+      <ul class={ul}>
+        {
+          safetyMeasures.map((row) => (
+            <li>
+              <span class="font-medium text-neutral-700">{row.label}：</span>
+              {row.body}
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+
+    <div class="mt-10">
+      <h2 class={h2}>8. 開示・訂正・利用停止等の請求について</h2>
+      <p class={p}>ご本人から、保有個人データについて以下のご請求があった場合は、ご本人であることを確認したうえで、法令に従い遅滞なく対応いたします。ご請求は、下記「10. お問い合わせ窓口」までメールでご連絡ください。なお、手数料はいただきません。</p>
+      <ul class={ul}>
+        {requestTypes.map((item) => <li>{item}</li>)}
+      </ul>
+      <p class="mt-3 text-sm leading-relaxed text-neutral-600">
+        ご案内メールの配信停止は、各メールに記載のリンクからいつでも行えます。
+      </p>
+    </div>
+
+    <div class="mt-10">
+      <h2 class={h2}>9. 本方針の変更について</h2>
+      <p class={p}>運営者は、法令の変更や運用状況の変化等に応じて、本方針の内容を変更することがあります。変更後の内容は、本ページに掲載した時点から効力を生じるものとします。</p>
+    </div>
+
+    <div class="mt-10">
+      <h2 class={h2}>10. お問い合わせ窓口</h2>
+      <p class={p}>本方針および個人情報の取扱いに関するお問い合わせ・ご請求は、下記までご連絡ください。</p>
+      <div class="mt-3 rounded-2xl border border-neutral-100 bg-neutral-50 p-6 text-sm leading-relaxed text-neutral-700">
+        <p class="font-medium text-ink-950">個人情報お問い合わせ窓口</p>
+        <p class="mt-1">{OPERATOR_NAME}</p>
+        <p class="mt-1">メールアドレス：<a href={`mailto:${CONTACT_EMAIL}`} class={link}>{CONTACT_EMAIL}</a></p>
+        <p class="mt-1"><a href="/contact" class={link}>お問い合わせフォームはこちら</a></p>
       </div>
     </div>
+
+    <p class="mt-12 text-right text-xs text-neutral-400">
+      制定日：{establishedAt}
+      <br />
+      最終更新日：{lastUpdated}
+    </p>
   </section>
 </BaseLayout>
