@@ -13,7 +13,7 @@ export const SITE = {
 };
 
 // ヘッダーのサブタイトル（ロゴ下の小さな英字）
-export const SITE_DESCRIPTOR = 'TIME · MONEY · SMALL MEDIA';
+export const SITE_DESCRIPTOR = 'TIME · MONEY · AI & BLOG';
 
 // ヘッダーのナビゲーション
 export const NAV = [
@@ -28,7 +28,7 @@ export type Theme = {
   // URLに使う英字（/blog/category/money など）
   key: 'work' | 'money' | 'media';
   name: string;
-  // このテーマとして扱う、Notionの旧カテゴリ名
+  // このテーマとして扱う、Notionの旧カテゴリ名（Notion側の名前を変える前でも表示が崩れないように）
   aliases: string[];
   number: string;
   en: string;
@@ -69,11 +69,11 @@ export const THEMES: Theme[] = [
   },
   {
     key: 'money',
-    name: 'お金と暮らし',
-    aliases: ['銘柄選定・分析', '口座・ツール活用', '戦略・資産配分'],
+    name: '投資と資産のこと',
+    aliases: ['お金と暮らし', '銘柄選定・分析', '口座・ツール活用', '戦略・資産配分'],
     number: '02',
-    en: 'MONEY & LIFE',
-    cardTitle: 'お金と暮らし',
+    en: 'INVEST & ASSETS',
+    cardTitle: '投資と\n資産のこと',
     subtitle: '50代からの資産運用｜「減らさない＆増やす」土台',
     color: 'var(--color-theme-money)',
     tagline: '増やす話の前に、いまの暮らしの現在地から。',
@@ -86,11 +86,11 @@ export const THEMES: Theme[] = [
   },
   {
     key: 'media',
-    name: '自分の小さなメディア',
-    aliases: [],
+    name: 'AIとブログのこと',
+    aliases: ['自分の小さなメディア'],
     number: '03',
-    en: 'MY SMALL MEDIA',
-    cardTitle: '自分の小さな\nメディア',
+    en: 'AI & BLOG',
+    cardTitle: 'AIと\nブログのこと',
     subtitle: '経験を型に変える｜Webストック収入',
     color: 'var(--color-theme-media)',
     tagline: '経験や好きなことに、私だけの小さな居場所を。',
