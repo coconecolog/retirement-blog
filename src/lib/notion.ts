@@ -318,6 +318,93 @@ function linkTargetAttrs(href: string): string {
   return isExternalUrl(href) ? ' target="_blank" rel="noopener noreferrer"' : '';
 }
 
+// ===== 記事内リンク（Notionのページメンション／ページへのリンク）=====
+// Notion本文で「@記事名」のページメンションや「ページへのリンク」ブロックを使うと、ビルド時に
+// リンク先の記事を「ページID」で特定し、その時点の記事タイトル・URL（スラッグ）に自動で置き換える。
+// これにより、リンク先記事のタイトルやスラッグを後から変えても、本文側のリンクは自動で追従する。
+//
+// 仕組み：本文ブロックの取得時に、ページメンションのリンク先を目印用のURL（MENTION_MARKER + ページID）に
+// 書き換えておき、全記事の取得が終わった後（＝全記事のタイトル・スラッグが揃った後）に、
+// 目印のリンクを実際の記事リンクへ置き換える。
+// 通常のリンク（キーワードにNotionページのURLを貼ったもの）も同じくページIDで記事を特定し、
+// URLだけを記事のURLに置き換える（リンク文字はキーワードのまま）。
+const MENTION_MARKER = 'https://notion-mention.invalid/';
+
+// ページID（ハイフンあり／なし）を、ハイフンなし・小文字の32桁にそろえる。
+function normalizePageId(id: string): string {
+  return id.replace(/-/g, '').toLowerCase();
+}
+
+// ブロックのデータを丸ごとたどり、ページメンションのリンク先を目印用URLに書き換える。
+// 段落・見出し・箇条書き・表のセル・画像キャプション・コールアウトなど、どこにあるメンションでも対象になる。
+function markPageMentions(value: any): void {
+  if (Array.isArray(value)) {
+    for (const v of value) markPageMentions(v);
+    return;
+  }
+  if (!value || typeof value !== 'object') return;
+  if (value.type === 'mention' && value.mention?.type === 'page' && value.mention.page?.id) {
+    value.href = MENTION_MARKER + normalizePageId(value.mention.page.id);
+  }
+  for (const key of Object.keys(value)) markPageMentions(value[key]);
+}
+
+// 本文取得用のNotionクライアントに、上記の書き換え処理を組み込む。
+// （notion-to-md も、表・コールアウトの子ブロック取得も、すべてこの blocks.children.list を通る）
+function enablePageMentionMarkers(notion: Client): void {
+  const children = notion.blocks.children as any;
+  const originalList = children.list;
+  children.list = async (args: any) => {
+    const res = await originalList(args);
+    markPageMentions(res?.results);
+    return res;
+  };
+}
+
+// 「ページへのリンク」ブロック（本文中に単独で置くリンク）。中身は後で記事タイトルに置き換える。
+function linkToPageToHtml(block: any): string {
+  const pageId: string | undefined = block.link_to_page?.page_id;
+  if (!pageId) return '';
+  return `<p class="notion-link-to-page"><a href="${MENTION_MARKER}${normalizePageId(pageId)}"></a></p>`;
+}
+
+// URLがNotionのページURLなら、そのページID（32桁）を返す。それ以外はnull。
+function extractNotionPageId(href: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(decodeEntities(href));
+  } catch {
+    return null;
+  }
+  const host = url.hostname.toLowerCase();
+  const isNotion = /(^|\.)notion\.(so|site|com)$/.test(host);
+  if (!isNotion) return null;
+  const matches = url.pathname.replace(/-/g, '').match(/[0-9a-f]{32}/gi);
+  return matches ? matches[matches.length - 1].toLowerCase() : null;
+}
+
+type PageLinkTarget = { slug: string; title: string };
+
+// 本文HTML中のNotionページへのリンクを、記事のリンクに置き換える。
+// ・ページメンション／ページへのリンク：リンク先が公開中の記事なら「最新タイトル＋記事URL」に。
+//   非公開・削除済み・記事以外のページなら、リンクを外して文字だけ残す（リンク切れを作らない）。
+// ・キーワードにNotionページのURLを貼った通常リンク：公開中の記事ならURLだけ記事URLに置き換える（文字はそのまま）。
+//   該当する記事がない場合は何もしない。
+function resolveNotionPageLinks(html: string, pages: Map<string, PageLinkTarget>): string {
+  return html.replace(/<a href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/g, (whole, href: string, inner: string) => {
+    if (href.startsWith(MENTION_MARKER)) {
+      const target = pages.get(href.slice(MENTION_MARKER.length));
+      if (target) return `<a href="/blog/${escapeHtml(target.slug)}">${escapeHtml(target.title)}</a>`;
+      return inner;
+    }
+    const pageId = extractNotionPageId(href);
+    if (!pageId) return whole;
+    const target = pages.get(pageId);
+    if (!target) return whole;
+    return `<a href="/blog/${escapeHtml(target.slug)}">${inner}</a>`;
+  });
+}
+
 // Notionのリッチテキスト配列（太字・リンクなどの書式付きテキスト）を、書式を保ったままインラインHTMLに変換する。
 // キャプションなどで「一部の文字だけにリンクが貼ってある」ケースでも、そのリンクを保持するために使う。
 function richTextToInlineHtml(richText: any[]): string {
@@ -1109,7 +1196,12 @@ export async function getAllPosts(): Promise<Post[]> {
   n2m.setCustomTransformer('callout', async (block: any) => calloutToHtml(notion, block));
   n2m.setCustomTransformer('image', async (block: any) => imageToHtml(block));
   n2m.setCustomTransformer('table', async (block: any) => tableToHtml(notion, block));
+  n2m.setCustomTransformer('link_to_page', async (block: any) => linkToPageToHtml(block));
+  // 本文中のページメンションを、記事リンクへ置き換えられるよう目印を付ける（詳細は enablePageMentionMarkers を参照）。
+  enablePageMentionMarkers(notion);
   const posts: Post[] = [];
+  // 本文のMarkdown。HTMLへの変換は、全記事のタイトル・スラッグが揃ってから（ループの後で）行う。
+  const markdownById = new Map<string, string>();
   const usedSlugs = new Set<string>();
   let cursor: string | undefined = undefined;
 
@@ -1181,7 +1273,7 @@ export async function getAllPosts(): Promise<Post[]> {
         console.error(`[notion] 本文の取得に失敗しました: ${title} (${page.id})`, err);
       }
 
-      const { html, toc } = renderContentWithToc(mdString || '');
+      markdownById.set(page.id, mdString || '');
       const excerpt = makeExcerpt(mdString);
       const customDescription = getCustomText(props[PROP.description]);
       const summary = getCustomText(props[PROP.summary]);
@@ -1199,8 +1291,8 @@ export async function getAllPosts(): Promise<Post[]> {
         publishedAt,
         updatedAt,
         thumbnail,
-        html,
-        toc,
+        html: '',
+        toc: [],
         excerpt,
         description: customDescription || excerpt,
         summary,
@@ -1212,6 +1304,16 @@ export async function getAllPosts(): Promise<Post[]> {
 
     cursor = res.has_more ? res.next_cursor ?? undefined : undefined;
   } while (cursor);
+
+  // 全記事のタイトル・スラッグが揃ったので、本文をHTMLに変換し、記事内リンク（ページメンション等）を解決する。
+  const pageLinkTargets = new Map<string, PageLinkTarget>(
+    posts.map((p) => [normalizePageId(p.id), { slug: p.slug, title: p.title }]),
+  );
+  for (const post of posts) {
+    const { html, toc } = renderContentWithToc(markdownById.get(post.id) ?? '');
+    post.html = resolveNotionPageLinks(html, pageLinkTargets);
+    post.toc = toc;
+  }
 
   cachedPosts = posts;
   return posts;
