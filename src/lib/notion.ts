@@ -8,7 +8,7 @@ import { NotionToMarkdown } from 'notion-to-md';
 import { marked, Renderer } from 'marked';
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { SITE, normalizeCategory, findTheme } from './site.config';
+import { SITE, THEMES, normalizeCategory, findTheme } from './site.config';
 
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const NOTION_DATABASE_ID = process.env.NOTION_DATABASE_ID;
@@ -893,6 +893,14 @@ export async function getCategoryMeta(): Promise<Map<string, CategoryMeta>> {
     } while (cursor);
   } catch (err) {
     console.warn('[notion] マスターカテゴリDBの詳細情報の取得に失敗しました。', err);
+  }
+
+  // Notion側のカテゴリ名がまだ旧名（aliases）のときも、新しいテーマ名で説明文・代表記事を引けるようにする。
+  // aliases の先頭から順に探すので、旧テーマ名を先頭に置いておく。
+  for (const theme of THEMES) {
+    if (map.has(theme.name)) continue;
+    const alias = theme.aliases.find((a) => map.has(a));
+    if (alias) map.set(theme.name, map.get(alias)!);
   }
 
   cachedCategoryMeta = map;
